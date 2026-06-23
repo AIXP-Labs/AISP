@@ -1,0 +1,24 @@
+[project]
+name = "aisp-protocol-tools"
+version = "1.0.0"
+description = "Zero-dependency validation tooling for the AISP protocol repository."
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+
+# Runtime tools are zero-dependency; jsonschema is only needed to exercise the
+# contract and machine-artifact JSON Schemas in the test suite.
+[project.optional-dependencies]
+dev = ["jsonschema>=4"]
+
+[project.scripts]
+aisp-validate = "tools.aisp_validate:main"
+aisp-check-runtime-trace = "tools.aisp_check_runtime_trace:main"
+aisp-hash = "tools.aisp_hash:main"
+aisp-readme = "tools.aisp_readme:main"
+aisp-skill-md = "tools.aisp_skill_md:main"
+aisp-validate-agent-skill-bridge = "tools.aisp_validate_agent_skill_bridge:main"
+aisp-check-doc-sync = "tools.check_doc_sync:main"
+aisp-check-markdown-links = "tools.check_markdown_links:main"
+
+[tool.aisp]
+protocol = "AISP V1.0.0"

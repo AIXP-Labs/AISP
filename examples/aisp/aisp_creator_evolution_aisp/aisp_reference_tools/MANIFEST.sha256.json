@@ -1,0 +1,58 @@
+{
+  "manifest_version": "1.0",
+  "directory": "aisp_reference_tools",
+  "snapshot_date": "2026-06-22",
+  "source_url": "https://github.com/AIXP-Labs/AISP/tree/main/tools",
+  "source_commit": "self-contained-init-force-release",
+  "snapshot_state": "init_force_single_commit",
+  "snapshot_note": "Bundled in the same single init-force release commit; a literal self-referential commit hash cannot be embedded without changing the commit hash. Use the published release commit plus these sha256 values as local integrity evidence only.",
+  "scope": "complete top-level Python reference tools copied from the AISP tools directory; README.md and this manifest are local snapshot metadata",
+  "trust_boundary": "sha256 values provide local integrity evidence only; they do not prove upstream trust, safety, or provenance",
+  "files": [
+    {
+      "path": "__init__.py",
+      "bytes": 1,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    {
+      "path": "aisp_check_runtime_trace.py",
+      "bytes": 8087,
+      "sha256": "fe1f21d34587c4172aafb5cf142e0c226c509371bab28dcb9c17875461522553"
+    },
+    {
+      "path": "aisp_hash.py",
+      "bytes": 5938,
+      "sha256": "d3f703b6b08b71428eb6b5e733d645ed9d64fd02b7f69946487cf41d02c81f6d"
+    },
+    {
+      "path": "aisp_readme.py",
+      "bytes": 11479,
+      "sha256": "7d70e9595a25a93a62db5cc40920f784de652b001f46b5204d47dde964b25b99"
+    },
+    {
+      "path": "aisp_skill_md.py",
+      "bytes": 11778,
+      "sha256": "9039079a78a15d620dbefd8758fa962dad2b86fe14a0b4dc45360a41dd2dce0d"
+    },
+    {
+      "path": "aisp_validate.py",
+      "bytes": 48681,
+      "sha256": "50b2da27bbbd9a0f6bc249cbd7f84b01907f1643df597e4d4393854f2af11d02"
+    },
+    {
+      "path": "aisp_validate_agent_skill_bridge.py",
+      "bytes": 16537,
+      "sha256": "bbb4ef7420a93f9a476292cd6f847adb98cc4a06ccbd3f88a21c03658ce4d1d7"
+    },
+    {
+      "path": "check_doc_sync.py",
+      "bytes": 12368,
+      "sha256": "7be7dd140ba7f45e9645256c3c6dfc31b9c29ccf1949cac89753f875acb104bf"
+    },
+    {
+      "path": "check_markdown_links.py",
+      "bytes": 5690,
+      "sha256": "ebbe117507d8efa802e80bd4b8ccfe272fdc94baf1c4045fdeb03dbecf36b6b6"
+    }
+  ]
+}

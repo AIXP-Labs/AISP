@@ -1,0 +1,62 @@
+{
+  "aisp_list_version": "1.0",
+  "skills": [
+    {
+      "id": "aisp_creator_evolution_aisp",
+      "name": "AISP Creator & Evolution",
+      "summary": "Create new conformant AISP skills, evolve existing ones, and adapt existing Agent Skills into native AISP packages from requirements, SOPs, prompts, or evidence.",
+      "path": "aisp/aisp_creator_evolution_aisp/aisp.aisop.json",
+      "category": "meta-tooling",
+      "tags": [
+        "skill-creation",
+        "skill-evolution",
+        "aisp-generator",
+        "meta-skill"
+      ],
+      "when_to_use": [
+        "create a new AISP skill",
+        "convert a requirement, workflow, SOP, or prompt into an AISP skill",
+        "evolve an existing AISP skill from research, execution evidence, tests, or human feedback"
+      ],
+      "risk_level": "medium"
+    },
+    {
+      "id": "stock_analysis_aisp",
+      "name": "Stock Analysis",
+      "summary": "Analyze a stock's recent fundamentals and produce a written, not-advice analysis report.",
+      "path": "aisp/stock_analysis_aisp/aisp.aisop.json",
+      "category": "finance",
+      "tags": [
+        "stocks",
+        "analysis",
+        "fundamentals",
+        "report"
+      ],
+      "when_to_use": [
+        "analyze a stock or ticker",
+        "summarize a company's recent fundamentals",
+        "produce a written stock analysis report"
+      ],
+      "risk_level": "medium"
+    },
+    {
+      "id": "yijing_aisp",
+      "name": "Yijing Divination",
+      "summary": "Cast and interpret an I Ching (Yijing) hexagram for a user's question.",
+      "path": "aisp/yijing_aisp/aisp.aisop.json",
+      "category": "culture",
+      "tags": [
+        "yijing",
+        "iching",
+        "divination",
+        "hexagram"
+      ],
+      "when_to_use": [
+        "cast an I Ching reading",
+        "interpret a hexagram",
+        "yijing divination for a question"
+      ],
+      "risk_level": "low"
+    }
+  ]
+}

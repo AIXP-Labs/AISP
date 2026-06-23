@@ -1,0 +1,43 @@
+{
+  "manifest_version": "1.0",
+  "directory": "aisp_specification",
+  "snapshot_date": "2026-06-22",
+  "source_url": "https://github.com/AIXP-Labs/AISP/tree/main/specification",
+  "source_commit": "self-contained-init-force-release",
+  "snapshot_state": "init_force_single_commit",
+  "snapshot_note": "Bundled in the same single init-force release commit; a literal self-referential commit hash cannot be embedded without changing the commit hash. Use the published release commit plus these sha256 values as local integrity evidence only.",
+  "scope": "complete contents copied from the source specification directory; README.md and this manifest are local snapshot metadata",
+  "trust_boundary": "sha256 values provide local integrity evidence only; they do not prove upstream trust, safety, or provenance",
+  "files": [
+    {
+      "path": "aisp.proto",
+      "bytes": 11270,
+      "sha256": "558b0cbdbe5888f492692bb8e480e90d250dbc9af3135cf85b90c9dbcba6a97d"
+    },
+    {
+      "path": "AISP_Protocol.md",
+      "bytes": 64350,
+      "sha256": "f6ea08b16583e25b8d951cd92dc0b7016d8f3a42147750894df77865dbad2db5"
+    },
+    {
+      "path": "AISP_Protocol_cn.md",
+      "bytes": 58619,
+      "sha256": "4d6cb5d4a599462ace22a337beaa098e8d0b21dfdfff6ccef7b4763e06c69d37"
+    },
+    {
+      "path": "standards/AISP_Standard.core.aisop.json",
+      "bytes": 13366,
+      "sha256": "faf67951d53285ef4740826a7b7ea46d762bf2d4170cb8ffe6b448ea3fee1ade"
+    },
+    {
+      "path": "standards/AISP_Standard.ecosystem.aisop.json",
+      "bytes": 8455,
+      "sha256": "736570ef108d7ee4c0c95e0ba29b8436a27c41f10de30b41238e0632d479060b"
+    },
+    {
+      "path": "standards/AISP_Standard.security.aisop.json",
+      "bytes": 8019,
+      "sha256": "a7b8381e7235556a09da0414244b63f1d2c7820282395a093f3376cc7010a1b7"
+    }
+  ]
+}

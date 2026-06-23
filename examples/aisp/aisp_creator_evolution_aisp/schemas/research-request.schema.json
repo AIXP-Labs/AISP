@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aisp.dev/schemas/research-request.schema.json",
+  "title": "Research Request",
+  "description": "Input to the shared research sub-graph (aisop.research).",
+  "type": "object",
+  "required": ["research_mode", "questions", "allow_web_research"],
+  "additionalProperties": true,
+  "properties": {
+    "research_mode": { "enum": ["create", "evolve"] },
+    "skill_goal": { "type": "string" },
+    "target_domain": { "type": "string" },
+    "questions": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+    "queries": { "type": "array", "items": { "type": "string" } },
+    "preferred_source_tiers": {
+      "type": "array",
+      "items": { "enum": ["tier1", "tier2", "tier3"] },
+      "$comment": "Optional (B3). Advisory ranking of source credibility tiers the research SHOULD prefer when gathering and grounding: tier1 = primary/authoritative (specs, standards bodies, official docs, source code), tier2 = reputable secondary (established vendors, peer-reviewed, recognized references), tier3 = community/unvetted (blogs, forums, AI-generated). Used by gather_sources to weight and by synthesize to label support strength; it does NOT relax any grounding rule and never substitutes for a real citation."
+    },
+    "constraints": { "type": "array", "items": { "type": "string" } },
+    "source_material": { "type": ["string", "null"] },
+    "allow_web_research": { "type": "boolean" }
+  }
+}

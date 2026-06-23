@@ -1,0 +1,21 @@
+{
+  "manifest_version": "1.0",
+  "directory": "aisop_specification",
+  "snapshot_date": "2026-06-22",
+  "source_url": "https://github.com/AIXP-Labs/AISoP/tree/main/specification",
+  "source_commit": "4e643cee42e47c4e42901b181d6c4b788d085043",
+  "scope": "complete contents copied from the source specification directory; README.md and this manifest are local snapshot metadata",
+  "trust_boundary": "sha256 values provide local integrity evidence only; they do not prove upstream trust, safety, or provenance",
+  "files": [
+    {
+      "path": "aisop-spec_CN.md",
+      "bytes": 36703,
+      "sha256": "5156dfcc00bb9f328b9457392f69f2618516508231d42cf07f23f565e8ecb6b6"
+    },
+    {
+      "path": "aisop-spec.md",
+      "bytes": 38914,
+      "sha256": "c03add9fdb673ae5d28c514182c97878bc0a31ba6a94f788681535ae374c2b1a"
+    }
+  ]
+}

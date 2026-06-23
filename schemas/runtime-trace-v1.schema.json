@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aisp.dev/schemas/runtime-trace-v1.schema.json",
+  "title": "AISP Runtime Trace (v1)",
+  "type": "object",
+  "required": ["runtime", "skill_id", "events"],
+  "additionalProperties": true,
+  "properties": {
+    "runtime": { "type": "string", "minLength": 1 },
+    "skill_id": { "type": "string", "pattern": "^[a-z0-9_]+_aisp$" },
+    "contract_read": { "type": "boolean" },
+    "contract_visible_to_model": { "type": "boolean" },
+    "tool_enforcement": { "enum": ["hard", "advisory"] },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type"],
+        "additionalProperties": true,
+        "properties": {
+          "type": { "type": "string" },
+          "node": { "type": "string" },
+          "step": { "type": "string" },
+          "call": { "type": "string" },
+          "bypassed": { "type": "boolean" },
+          "mode": { "type": "string" },
+          "enforcement": { "enum": ["hard", "advisory", "unknown"] },
+          "tools": { "type": "array", "items": { "type": "string" } },
+          "dispatched_as": { "enum": ["inline", "agent"] }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": { "type": { "const": "execute_mode_dispatch" } },
+              "required": ["type"]
+            },
+            "then": {
+              "required": ["node", "mode", "dispatched_as"],
+              "properties": {
+                "mode": { "enum": ["inline", "agent"] },
+                "dispatched_as": { "enum": ["inline", "agent"] }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

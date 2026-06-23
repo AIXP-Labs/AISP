@@ -1,0 +1,21 @@
+{
+  "tool_capabilities_version": "1.0",
+  "provenance": {
+    "source": "tests/fixtures/tool_capabilities/hard_tools.json",
+    "generated_by": "reference-fixture"
+  },
+  "tools": {
+    "filesystem": {
+      "risk_level": "medium",
+      "enforcement": "hard",
+      "capabilities": ["read_declared_resources"],
+      "forbidden_capabilities": ["network", "trade_execution"]
+    },
+    "shell": {
+      "risk_level": "high",
+      "enforcement": "hard",
+      "capabilities": ["run_declared_scripts"],
+      "forbidden_capabilities": ["trade_execution"]
+    }
+  }
+}

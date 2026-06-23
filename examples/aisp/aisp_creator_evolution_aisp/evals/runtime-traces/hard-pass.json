@@ -1,0 +1,43 @@
+{
+  "skill_id": "aisp_creator_evolution_aisp",
+  "runtime": "script-behavior-fixture",
+  "contract_read": true,
+  "contract_visible_to_model": true,
+  "tool_enforcement": "hard",
+  "events": [
+    {
+      "type": "tool_enforcement",
+      "enforcement": "hard"
+    },
+    {
+      "type": "execute_mode_dispatch",
+      "node": "design_skill",
+      "dispatched_as": "agent",
+      "mode": "agent"
+    },
+    {
+      "type": "execute_mode_dispatch",
+      "node": "design_evolution",
+      "dispatched_as": "agent",
+      "mode": "agent"
+    },
+    {
+      "type": "execute_mode_dispatch",
+      "node": "generate_candidate",
+      "dispatched_as": "agent",
+      "mode": "agent"
+    },
+    {
+      "type": "execute_mode_dispatch",
+      "node": "gather_sources",
+      "dispatched_as": "agent",
+      "mode": "agent"
+    },
+    {
+      "type": "execute_mode_dispatch",
+      "node": "validate_candidate",
+      "mode": "agent",
+      "dispatched_as": "agent"
+    }
+  ]
+}

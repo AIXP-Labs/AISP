@@ -1,0 +1,66 @@
+[
+  {
+    "role": "system",
+    "content": {
+      "protocol": "AISP V1.0.0",
+      "axiom_0": "Human_Sovereignty_and_Wellbeing",
+      "id": "dangling_aisp",
+      "name": "Dangling AISP",
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "summary": "Invalid fixture with dangling enforced_by.",
+      "flow_format": "jsonflow",
+      "loading_mode": "node",
+      "tools": [],
+      "params": {},
+      "system_prompt": ""
+    }
+  },
+  {
+    "role": "user",
+    "content": {
+      "instruction": "STRICTLY OBEY aisp_contract; its non_negotiable rules are inviolable; then RUN aisop.main",
+      "user_input": "{user_input}",
+      "aisp_contract": {
+        "profile": "aisp.skill.v1",
+        "invocation": {
+          "mode": "auto_or_manual",
+          "when_to_use": [
+            "test dangling enforcement"
+          ],
+          "when_not_to_use": [
+            "no test requested"
+          ]
+        },
+        "non_negotiable": [
+          {
+            "rule": "This points nowhere.",
+            "enforced_by": "missing.step1:sys.assert"
+          }
+        ],
+        "risk_level": "low",
+        "resources": []
+      },
+      "aisop": {
+        "main": {
+          "start": {
+            "next": [
+              "end_node"
+            ]
+          },
+          "end_node": {}
+        }
+      },
+      "functions": {
+        "start": {
+          "step1": "Prepare the test result.",
+          "execute_mode": "inline"
+        },
+        "end_node": {
+          "step1": "Return result.",
+          "execute_mode": "inline"
+        }
+      }
+    }
+  }
+]

@@ -1,0 +1,15 @@
+{
+  "tool_capabilities_version": "1.0",
+  "tools": {
+    "filesystem": {
+      "risk_level": "medium",
+      "enforcement": "hard",
+      "capabilities": ["read_declared_resources"]
+    },
+    "shell": {
+      "risk_level": "high",
+      "enforcement": "advisory",
+      "capabilities": ["run_declared_scripts"]
+    }
+  }
+}

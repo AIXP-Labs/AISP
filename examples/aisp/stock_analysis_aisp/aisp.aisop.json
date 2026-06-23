@@ -1,0 +1,147 @@
+[
+  {
+    "role": "system",
+    "content": {
+      "protocol": "AISP V1.0.0",
+      "axiom_0": "Human_Sovereignty_and_Wellbeing",
+      "id": "stock_analysis_aisp",
+      "name": "Stock Analysis",
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "summary": "Analyze a stock's recent fundamentals and produce a written, not-advice analysis report.",
+      "description": "Native AISP skill: load market data, compute summary indicators via a bundled script, and write an analysis report. It never places trades and always states the report is not financial advice.",
+      "flow_format": "mermaid",
+      "loading_mode": "node",
+      "tools": [
+        "filesystem",
+        "shell"
+      ],
+      "params": {
+        "ticker": "string"
+      },
+      "system_prompt": ""
+    }
+  },
+  {
+    "role": "user",
+    "content": {
+      "instruction": "STRICTLY OBEY aisp_contract; its non_negotiable rules are inviolable; then RUN aisop.main",
+      "user_input": "{user_input}",
+      "aisp_contract": {
+        "profile": "aisp.skill.v1",
+        "invocation": {
+          "mode": "auto_or_manual",
+          "when_to_use": [
+            "analyze a stock or ticker",
+            "summarize a company's recent fundamentals",
+            "produce a written stock analysis report"
+          ],
+          "when_not_to_use": [
+            "placing or executing trades",
+            "personalized investment advice requiring a licensed advisor",
+            "no ticker provided"
+          ]
+        },
+        "non_negotiable": [
+          {
+            "rule": "Follow RUN aisop.main; analyze only after loading data.",
+            "enforced_by": "aisop.main"
+          },
+          {
+            "rule": "Never place, execute, or recommend specific trades. The skill has no trading capability.",
+            "enforced_by": "tools"
+          },
+          {
+            "rule": "Do not analyze without loaded market data.",
+            "enforced_by": "analyze.step1:sys.assert"
+          },
+          {
+            "rule": "The report must state it is informational only and not financial advice.",
+            "enforced_by": "report.step2:sys.assert"
+          }
+        ],
+        "discovery": {
+          "category": "finance",
+          "tags": [
+            "stocks",
+            "analysis",
+            "fundamentals",
+            "report"
+          ]
+        },
+        "risk_level": "medium",
+        "resources": [
+          {
+            "id": "market_data",
+            "path": "data/sample_prices.csv",
+            "kind": "data",
+            "mode": "read_only"
+          },
+          {
+            "id": "indicators",
+            "path": "scripts/indicators.py",
+            "kind": "script",
+            "mode": "execute_only",
+            "when": "computing summary indicators",
+            "requires_tools": [
+              "shell"
+            ]
+          },
+          {
+            "id": "finance_terms",
+            "path": "finance_terms.md",
+            "kind": "reference",
+            "mode": "read_only",
+            "scope": "shared",
+            "when": "explaining indicators in the report"
+          },
+          {
+            "id": "hard_runtime_trace",
+            "path": "evals/runtime-traces/hard-pass.json",
+            "kind": "eval",
+            "mode": "read_only",
+            "when": "release validation evidence for strict tool enforcement and R7 agent dispatch"
+          }
+        ]
+      },
+      "aisop": {
+        "main": "graph TD\n    load[Load market data] --> compute[Compute indicators]\n    compute --> analyze[Analyze]\n    analyze --> report[Write report]\n    report --> end_node((End))"
+      },
+      "functions": {
+        "load": {
+          "step1": "sys.io.read('data/sample_prices.csv') -> prices",
+          "step2": "Parse prices into a structured series for the requested ticker.",
+          "output_mapping": "prices",
+          "execute_mode": "inline"
+        },
+        "compute": {
+          "step1": "sys.run('python scripts/indicators.py', stdin=prices) -> indicators",
+          "step2": "Validate that indicators contains the expected fields (moving_average, volatility, trend).",
+          "output_mapping": "indicators",
+          "execute_mode": "inline"
+        },
+        "analyze": {
+          "step1": "sys.assert('prices != null && indicators != null', 'No market data has been loaded')",
+          "step2": "sys.io.read('finance_terms.md') -> terms",
+          "step3": "Interpret the indicators against terms; describe trend, volatility, and notable signals.",
+          "constraints": [
+            "Ground every claim in the loaded data and indicators; do not fabricate figures."
+          ],
+          "output_mapping": "analysis",
+          "execute_mode": "agent"
+        },
+        "report": {
+          "step1": "sys.llm.json('Write a stock analysis report from analysis', schema={ticker:'string', summary:'string', signals:'array', disclaimer:'string'}) -> report",
+          "step2": "sys.assert('report.disclaimer != null', 'Report must state it is informational only and not financial advice')",
+          "step3": "Render the report as Markdown.",
+          "output_mapping": "report",
+          "execute_mode": "inline"
+        },
+        "end_node": {
+          "step1": "Return the final Markdown report.",
+          "execute_mode": "inline"
+        }
+      }
+    }
+  }
+]

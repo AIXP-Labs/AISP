@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aisp.dev/schemas/skill-design.schema.json",
+  "title": "AISP Skill Design",
+  "description": "The intermediate design of an AISP skill, validated before generation.",
+  "type": "object",
+  "required": ["id", "name", "summary", "invocation", "non_negotiable", "risk_level", "aisop", "functions"],
+  "additionalProperties": true,
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z0-9_]+_aisp$", "description": "snake_case, equals the folder name, ends with _aisp" },
+    "name": { "type": "string", "minLength": 1 },
+    "summary": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+    "license": { "type": "string", "default": "Apache-2.0" },
+    "flow_format": { "enum": ["mermaid", "jsonflow", "hybrid"] },
+    "loading_mode": { "const": "node", "description": "AISP skills use node-level progressive disclosure." },
+    "tools": { "type": "array", "items": { "type": "string" } },
+    "invocation": {
+      "type": "object",
+      "required": ["when_to_use"],
+      "properties": {
+        "mode": { "type": "string" },
+        "when_to_use": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "when_not_to_use": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "non_negotiable": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rule", "enforced_by"],
+        "properties": {
+          "rule": { "type": "string", "minLength": 1 },
+          "enforced_by": {
+            "type": "string",
+            "description": "<node>.<step>:<mechanism> | aisop.main | tools",
+            "pattern": "^(aisop\\.main|tools|[a-zA-Z0-9_]+\\.[a-zA-Z0-9_]+:sys\\.[a-zA-Z0-9_.]+)$"
+          }
+        }
+      }
+    },
+    "discovery": {
+      "type": "object",
+      "properties": {
+        "category": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "risk_level": { "enum": ["low", "medium", "high", "critical"] },
+    "resources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "path", "kind", "mode"],
+        "properties": {
+          "id": { "type": "string" },
+          "path": { "type": "string", "description": "relative, confined to the skill folder or _shared/; component-precise '..' rejection (mirrors the M5 validator's path-segment split) so legit dotted filenames like my..file.json are NOT false-rejected while real '..' traversal components still are", "pattern": "^(?![/\\\\])(?!(?:.*[/\\\\])?\\.\\.(?:[/\\\\]|$)).+$" },
+          "kind": { "type": "string" },
+          "mode": { "enum": ["read_only", "execute_only", "read_and_execute"] },
+          "scope": { "enum": ["skill", "shared"] },
+          "when": { "type": "string" },
+          "requires_tools": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "aisop": { "type": "object", "required": ["main"] },
+    "functions": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "execute_mode": { "enum": ["inline", "agent"] }
+        }
+      }
+    }
+  }
+}

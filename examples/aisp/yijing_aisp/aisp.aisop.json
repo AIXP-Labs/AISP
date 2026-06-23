@@ -1,0 +1,118 @@
+[
+  {
+    "role": "system",
+    "content": {
+      "protocol": "AISP V1.0.0",
+      "axiom_0": "Human_Sovereignty_and_Wellbeing",
+      "id": "yijing_aisp",
+      "name": "Yijing Divination",
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "summary": "Cast and interpret an I Ching (Yijing) hexagram for a user's question.",
+      "description": "Native AISP skill: clarify the question, cast a hexagram via a deterministic toss, and interpret it for reflection (not deterministic prediction).",
+      "flow_format": "mermaid",
+      "loading_mode": "node",
+      "tools": [
+        "filesystem",
+        "code"
+      ],
+      "params": {
+        "question": "string"
+      },
+      "system_prompt": ""
+    }
+  },
+  {
+    "role": "user",
+    "content": {
+      "instruction": "STRICTLY OBEY aisp_contract; its non_negotiable rules are inviolable; then RUN aisop.main",
+      "user_input": "{user_input}",
+      "aisp_contract": {
+        "profile": "aisp.skill.v1",
+        "invocation": {
+          "mode": "auto_or_manual",
+          "when_to_use": [
+            "cast an I Ching reading",
+            "interpret a hexagram",
+            "yijing divination for a question"
+          ],
+          "when_not_to_use": [
+            "medical, legal, or financial decisions needing a professional",
+            "no question provided"
+          ]
+        },
+        "non_negotiable": [
+          {
+            "rule": "Follow RUN aisop.main; never interpret before casting.",
+            "enforced_by": "aisop.main"
+          },
+          {
+            "rule": "Do not interpret without a cast hexagram.",
+            "enforced_by": "interpret.step1:sys.assert"
+          },
+          {
+            "rule": "The reading must state it is for reflection, not deterministic prediction.",
+            "enforced_by": "interpret.step4:sys.assert"
+          }
+        ],
+        "discovery": {
+          "category": "culture",
+          "tags": [
+            "yijing",
+            "iching",
+            "divination",
+            "hexagram"
+          ]
+        },
+        "risk_level": "low",
+        "resources": [
+          {
+            "id": "hexagrams",
+            "path": "data/hexagrams.json",
+            "kind": "data",
+            "mode": "read_only"
+          },
+          {
+            "id": "interpretation_guide",
+            "path": "data/interpretation_guide.md",
+            "kind": "reference",
+            "mode": "read_only",
+            "when": "interpreting the hexagram"
+          }
+        ]
+      },
+      "aisop": {
+        "main": "graph TD\n    clarify[Clarify the question] --> cast[Cast hexagram]\n    cast --> interpret[Interpret]\n    interpret --> end_node((End))"
+      },
+      "functions": {
+        "clarify": {
+          "step1": "Identify the user's question and intent for the reading.",
+          "output_mapping": "question",
+          "execute_mode": "inline"
+        },
+        "cast": {
+          "step1": "sys.code.exec('python', 'import random, json; print(json.dumps([random.randint(6,9) for _ in range(6)]))') -> lines",
+          "step2": "sys.io.read('data/hexagrams.json') -> hexagram_table",
+          "step3": "Map lines (6/8 yin, 7/9 yang; 6/9 changing) to the primary and changing hexagram via hexagram_table.",
+          "output_mapping": "hexagram",
+          "execute_mode": "inline"
+        },
+        "interpret": {
+          "step1": "sys.assert('hexagram != null', 'No hexagram has been cast')",
+          "step2": "sys.io.read('data/interpretation_guide.md') -> guide",
+          "step3": "sys.llm.json('Interpret the hexagram for the question using guide', schema={summary:'string', guidance:'string', changing_lines:'array', disclaimer:'string'}) -> reading",
+          "step4": "sys.assert(\"'reflection' in reading.disclaimer.lower() or 'not deterministic' in reading.disclaimer.lower()\", 'Reading must state it is for reflection, not deterministic prediction')",
+          "step5": "Render reading as Markdown.",
+          "constraints": [
+            "Ground the interpretation in the cast hexagram and guide; do not fabricate hexagrams."
+          ],
+          "execute_mode": "inline"
+        },
+        "end_node": {
+          "step1": "Return the final Markdown reading.",
+          "execute_mode": "inline"
+        }
+      }
+    }
+  }
+]

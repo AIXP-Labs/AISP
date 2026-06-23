@@ -1,0 +1,98 @@
+site_name: AISP — AI Skill Protocol
+site_description: AI Skill Protocol — Packaging Executable, Governable, Distributable AI Skills
+site_url: https://aisp.dev
+repo_url: https://github.com/AIXP-Labs/AISP
+repo_name: AISP
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: orange
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Specification: specification.md
+  - Topics:
+    - What is AISP?: topics/what-is-aisp.md
+    - Core Concepts: topics/core-concepts.md
+    - Axiom 0: topics/axiom-0.md
+    - The Skill Contract: topics/skill-contract.md
+    - enforced_by & sys.*: topics/enforced-by-and-sys.md
+    - Resources: topics/resources.md
+    - Discovery & Registry: topics/discovery-and-registry.md
+    - Security Model: topics/security-model.md
+    - Lifecycle: topics/lifecycle.md
+    - Interoperability with Agent Skills: topics/interoperability-with-agent-skills.md
+  - Guides:
+    - Getting Started: guides/getting-started.md
+    - First AISP Skill: guides/first-aisp-skill.md
+    - Discovering Skills: guides/discovering-skills.md
+    - Conformance Walkthrough: guides/conformance-walkthrough.md
+    - 一致性检查指南: guides/conformance-walkthrough_CN.md
+  - Reference:
+    - aisp.aisop.json Fields: reference/aisp-fields.md
+    - aisp_contract Fields: reference/aisp_contract-fields.md
+    - enforced_by Grammar: reference/enforced_by-grammar.md
+    - Conformance Rules: reference/conformance-rules.md
+    - Validator Coverage: reference/validator-coverage.md
+    - Generated Skill README: reference/generated-readme.md
+    - Registry & Runtime Artifacts: reference/registry-runtime-artifacts.md
+    - Threat Taxonomy: reference/threat-taxonomy.md
+    - Error Codes: reference/error-codes.md
+    - Glossary: reference/glossary.md
+  - Governance:
+    - Changelog: changelog.md
+    - ADR-001 Skill-Package Layer on AISOP: adrs/adr-001-skill-package-layer-on-aisop.md
+    - ADR-002 aisp_contract in User Message: adrs/adr-002-aisp_contract-in-user-message.md
+    - ADR-003 _aisp Suffix & Folder-per-Skill: adrs/adr-003-aisp-suffix-and-folder-per-skill.md
+    - ADR-004 enforced_by Policy-as-Code: adrs/adr-004-enforced_by-policy-as-code.md
+    - ADR-005 Complementary to Agent Skills: adrs/adr-005-complementary-to-agent-skills.md
+    - ADR-006 Axiom 0 Immutability: adrs/adr-006-axiom-0-immutability.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/AIXP-Labs

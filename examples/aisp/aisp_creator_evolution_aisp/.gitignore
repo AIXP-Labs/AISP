@@ -1,0 +1,13 @@
+# Python build artifacts — keep them out of the shipped AISP skill.
+# scripts/validate_aisp_skill.py and templates/aisp_list.py regenerate these
+# whenever imported/compiled without the -B flag (e.g. py_compile), so the
+# one-off deletion under `python -B` is not durable on its own. Ignoring them
+# here makes the artifacts never re-ship regardless of how the scripts are run.
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Local evolution/cache artifacts are not part of the distributable AISP skill.
+.evolution_snapshot/
+.version_history/

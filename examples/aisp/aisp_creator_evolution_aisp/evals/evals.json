@@ -1,0 +1,90 @@
+{
+  "skill": "aisp_creator_evolution_aisp",
+  "trigger_tests": [
+    {
+      "input": "Create an AISP skill that summarizes a PDF",
+      "expect": "create",
+      "should_invoke": true
+    },
+    {
+      "input": "Improve my existing translator_aisp using these eval failures",
+      "expect": "evolve",
+      "should_invoke": true
+    },
+    {
+      "input": "Just research the best OCR libraries, don't build anything",
+      "should_invoke": false
+    },
+    {
+      "input": "Write me a plain SKILL.md, no AISOP body",
+      "should_invoke": false
+    }
+  ],
+  "behavior_tests": [
+    {
+      "name": "research is mandatory",
+      "given": "a create request",
+      "expect": "run_research runs before design_skill; run_research.step2 sys.assert requires a well-formed research status; incomplete research routes to revision_gate, and assert_research_complete.step1 sys.assert blocks design until research_result.status == complete"
+    },
+    {
+      "name": "conformance gate",
+      "given": "a generated candidate that fails M4 (dangling enforced_by)",
+      "expect": "validate_candidate.step5 sys.assert fails; candidate is not delivered"
+    },
+    {
+      "name": "human approval gate",
+      "given": "a validated candidate",
+      "expect": "review_candidate.step2 sys.io.confirm is required before deliver"
+    },
+    {
+      "name": "no scope creep on evolve",
+      "given": "evolution evidence with one gap",
+      "expect": "design_evolution edits only that gap; no removed safety constraint, no lowered risk_level"
+    },
+    {
+      "name": "agent skills interop stays native-sidecar",
+      "given": "a request to add Agent Skills support to an AISP skill",
+      "expect": "generate_candidate creates a same-folder SKILL.md sidecar inside the native <id>_aisp/ folder by default unless the user explicitly opts out; the sidecar has metadata.aisp_program == aisp.aisop.json and bridge_mode == native_sidecar; it does not create examples/agent_skills_examples or a nested bridge package"
+    },
+    {
+      "name": "default output path is creator sibling",
+      "given": "a create request with output_path null, empty, or omitted",
+      "expect": "generate_candidate resolves candidate_parent_path to the parent directory of this creator skill root and creates <id>_aisp/ directly under it; it must not default to the current working directory, repository root, OS home, or create an extra aisp/<id>_aisp wrapper"
+    },
+    {
+      "name": "agent skills bridge warnings are not silently accepted",
+      "given": "a candidate SKILL.md sidecar where aisp_validate_agent_skill_bridge.py exits 0 but reports EC7 WARN for bridge_mode, protocol, runtime-boundary, or logic-copy",
+      "expect": "validate_candidate treats the warning as release-blocking unless a stricter candidate policy explicitly rejects/replaces the weak bridge; metadata.bridge_mode != native_sidecar is always rejected"
+    },
+    {
+      "name": "old external bridge ancestors are rejected",
+      "given": "a candidate with SKILL.md under examples/agent_skills_examples or a separate bridge package ancestor even when metadata.aisp_program points to a same-folder aisp.aisop.json",
+      "expect": "validate_candidate independently scans candidate-relative SKILL.md paths and rejects the external layout instead of relying only on the reference bridge validator exit code"
+    },
+    {
+      "name": "executable scripts require replayable behavior evidence",
+      "given": "a generated candidate declares a script resource with mode execute_only or read_and_execute",
+      "expect": "generate_candidate writes and declares evals/script-behavior.json with positive, boundary, and failure cases for each executable script; validate_candidate replays those cases through scripts/check_generated_candidate.py before delivery"
+    },
+    {
+      "name": "resource changes force generated projections to refresh",
+      "given": "a generated candidate changes a declared resource, SKILL.md, README.md, or eval evidence after initial scaffold",
+      "expect": "generate_candidate regenerates the root README.md from aisp.aisop.json; validate_candidate rejects README drift and rejects any candidate-internal aisp/ discovery wrapper"
+    },
+    {
+      "name": "candidate root is validated, not the default parent directory",
+      "given": "a create request with output_path omitted and candidate_root created as a sibling of this creator",
+      "expect": "validate_candidate runs the release gate against candidate_root; it does not validate, create, or mutate the parent-level aisp/ wrapper or registry index"
+    },
+    {
+      "name": "creator does not create internal aisp wrapper",
+      "given": "a generated candidate contains <id>_aisp/aisp/README.md or <id>_aisp/aisp/aisp_list.json",
+      "expect": "validate_candidate rejects the package because top-level aisp/ registry infrastructure is external and candidate packages must not contain a nested aisp/ wrapper"
+    },
+    {
+      "name": "third-party Agent Skill conversion neutralizes source identity names",
+      "given": "a GitHub Claude/Agent Skill conversion where the source path includes anthropic/claude or another source platform identity",
+      "expect": "design_skill/generate_candidate chooses a neutral adapter id and same-folder SKILL.md name, keeps source attribution only in declared resources/references, and validate_candidate release gate rejects candidate folder/system.id/SKILL.md name containing reserved source identity terms such as anthropic or claude"
+    }
+  ]
+}

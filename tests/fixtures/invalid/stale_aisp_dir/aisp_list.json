@@ -1,0 +1,15 @@
+{
+  "aisp_list_version": "1.0",
+  "skills": [
+    {
+      "id": "missing_aisp",
+      "name": "Missing",
+      "summary": "Stale row",
+      "path": "aisp/missing_aisp/aisp.aisop.json",
+      "category": "test",
+      "tags": [],
+      "when_to_use": ["test"],
+      "risk_level": "low"
+    }
+  ]
+}

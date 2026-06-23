@@ -1,0 +1,339 @@
+// AI Skill Protocol (AISP) — Proto3 Definition
+// Authoritative normative definition of all AISP data objects and service operations.
+//
+// This proto file defines the skill-package-layer abstractions for AISP-compliant
+// AI skills. Unlike the execution language (AISOP) on which it builds, AISP
+// focuses on how an AISOP program is packaged, discovered, invoked, and bound to
+// its red lines as a skill. AISP's lifecycle (generation / evolution /
+// distribution) is AISP-native and tool-agnostic.
+//
+// Version: AISP V1.0.0
+// Authority: aisp.dev
+// Axiom 0: Human_Sovereignty_and_Wellbeing
+
+syntax = "proto3";
+package aisp.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "aisp.dev/aisp/v1";
+option java_multiple_files = true;
+option java_outer_classname = "AISP";
+option java_package = "dev.aisp.v1";
+
+// ---------------------------------------------------------------------------
+// Service Definition
+// ---------------------------------------------------------------------------
+
+// AISPSkillService provides operations for discovering, inspecting, and
+// checking conformance of AISP-compliant skills.
+service AISPSkillService {
+  // Discovers AISP skills under a search path or registry.
+  // Mirrors the three discovery paths: index (aisp_list.json), script
+  // (aisp_list.py), and glob fallback (aisp/*_aisp/aisp.aisop.json).
+  rpc DiscoverSkills(DiscoverSkillsRequest) returns (DiscoverSkillsResponse) {}
+
+  // Retrieves the full skill contract (user.content.aisp_contract) and
+  // system metadata for a specific skill.
+  rpc GetSkill(GetSkillRequest) returns (Skill) {}
+
+  // Checks an AISP skill against the AISP_Standard conformance rules
+  // (M1-M6 skill conformance, R1-R7 runtime conformance where applicable).
+  // Returns a structured conformance report.
+  rpc CheckConformance(CheckConformanceRequest) returns (ConformanceReport) {}
+
+  // Returns the index (aisp_list.json equivalent) for a skill directory.
+  rpc GetSkillList(GetSkillListRequest) returns (SkillList) {}
+}
+// ---------------------------------------------------------------------------
+// Layered Chain
+// ---------------------------------------------------------------------------
+
+// Identifies the layered chain for an AISP skill.
+// A skill is an AISOP program (execution) packaged by AISP (this protocol),
+// under HSAW / Axiom 0.
+message LayeredChain {
+  // The skill-package authority domain (e.g., "aisp.dev").
+  string skill_authority = 1;
+  // The execution-language domain (e.g., "aisop.dev").
+  string execution_domain = 2;
+  // Optional governance authority domain, if the author opts into one. AISP
+  // itself is registry- and governance-agnostic; may be empty.
+  string governance_domain = 3;
+  // The executor domain (e.g., "soulbot.dev").
+  string executor_domain = 4;
+  // MUST be "Human_Sovereignty_and_Wellbeing". Immutable.
+  string axiom_0 = 5;
+}
+
+// ---------------------------------------------------------------------------
+// Skill
+// ---------------------------------------------------------------------------
+
+// Skill is the core unit of AISP: one self-contained aisp/<id>/ folder
+// whose body is an AISOP program (aisp.aisop.json).
+message Skill {
+  // --- System metadata (system.content of aisp.aisop.json) ---
+  // The declared protocol literal, e.g. "AISP V1.0.0".
+  string protocol = 1;
+  // MUST be "Human_Sovereignty_and_Wellbeing".
+  string axiom_0 = 2;
+  // Skill id == folder name; MUST end with "_aisp".
+  string id = 3;
+  // Human-readable name.
+  string name = 4;
+  // SemVer of this skill.
+  string version = 5;
+  // SPDX license identifier (default "Apache-2.0").
+  string license = 6;
+  // One-sentence capability summary.
+  string summary = 7;
+  // Detailed description.
+  string description = 8;
+  // Flow format: "mermaid" | "jsonflow" | "hybrid".
+  string flow_format = 9;
+  // AISP skill loading strategy. MUST be "node".
+  string loading_mode = 10;
+
+  // --- The skill contract (user.content.aisp_contract) ---
+  SkillContract contract = 11;
+
+  // Relative path to aisp.aisop.json (e.g. "aisp/yijing_aisp/aisp.aisop.json").
+  string path = 12;
+
+  // The layered chain claims for this skill.
+  LayeredChain chain = 13;
+}
+
+// The skill contract — a real object in the user message.
+message SkillContract {
+  // MUST start with "aisp.skill." (e.g. "aisp.skill.v1").
+  string profile = 1;
+  // Triggering metadata.
+  Invocation invocation = 2;
+  // Red lines bound to real enforcement mechanisms.
+  repeated NonNegotiable non_negotiable = 3;
+  // Discovery metadata.
+  Discovery discovery = 4;
+  // Single risk grade.
+  RiskLevel risk_level = 5;
+  // Resource inventory.
+  repeated Resource resources = 6;
+}
+
+// Triggering — decided before execution ("should this skill start?").
+message Invocation {
+  InvocationMode mode = 1;
+  // Structured, routable trigger conditions.
+  repeated string when_to_use = 2;
+  // Disabling boundary; wins over when_to_use on conflict.
+  repeated string when_not_to_use = 3;
+}
+
+// A red line: a natural-language rule bound to a real enforcement mechanism.
+message NonNegotiable {
+  // The natural-language declaration (policy-as-prompt; soft).
+  string rule = 1;
+  // The enforcement binding (policy-as-code; hard). MUST point to a mechanism
+  // that exists in the skill. Grammar:
+  //   "<node>.stepN:<mechanism>"  (e.g. "interpret.step1:sys.assert")
+  //   "aisop.main"                 (enforced by graph topology)
+  //   "tools"                      (enforced by the tools allow-list,
+  //                                 hard only when the runtime enforces it)
+  string enforced_by = 2;
+}
+
+// Discovery metadata for registry / routing.
+message Discovery {
+  string category = 1;
+  repeated string tags = 2;
+}
+
+// A resource the skill uses. resources = inventory; functions = usage.
+message Resource {
+  string id = 1;
+  // Relative path; confined to the skill folder or _shared/; no "../" escape.
+  string path = 2;
+  // Open vocabulary: "data" | "script" | "reference" | "asset" | "template" | ...
+  string kind = 3;
+  // Controlled enum gating behavior.
+  ResourceMode mode = 4;
+  // Optional: when to load.
+  string when = 5;
+  // "skill" (default) | "shared".
+  ResourceScope scope = 6;
+  // Tools a script needs (least authority).
+  repeated string requires_tools = 7;
+  // Optional resource content hash for registry-distributed skills.
+  string sha256 = 8;
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+// Invocation mode.
+enum InvocationMode {
+  INVOCATION_MODE_UNSPECIFIED = 0;
+  INVOCATION_MODE_MANUAL_ONLY = 1;
+  INVOCATION_MODE_AUTO_OR_MANUAL = 2;
+  INVOCATION_MODE_AUTO_PREFERRED = 3;
+  INVOCATION_MODE_INTERNAL_ONLY = 4;
+}
+
+// Single risk grade for the skill.
+enum RiskLevel {
+  RISK_LEVEL_UNSPECIFIED = 0;
+  // Read-only / analysis.
+  RISK_LEVEL_LOW = 1;
+  // Writes locally.
+  RISK_LEVEL_MEDIUM = 2;
+  // Delete / deploy / exfiltrate.
+  RISK_LEVEL_HIGH = 3;
+  // Mandatory human review or no autonomy.
+  RISK_LEVEL_CRITICAL = 4;
+}
+
+// Resource access mode — the security gate. Controlled enum (closed set).
+enum ResourceMode {
+  RESOURCE_MODE_UNSPECIFIED = 0;
+  RESOURCE_MODE_READ_ONLY = 1;
+  RESOURCE_MODE_EXECUTE_ONLY = 2;
+  RESOURCE_MODE_READ_AND_EXECUTE = 3;
+}
+
+// Resource scope.
+enum ResourceScope {
+  RESOURCE_SCOPE_UNSPECIFIED = 0;
+  // Relative to the skill folder (default).
+  RESOURCE_SCOPE_SKILL = 1;
+  // Relative to _shared/.
+  RESOURCE_SCOPE_SHARED = 2;
+}
+
+// Conformance check severity.
+enum ConformanceSeverity {
+  CONFORMANCE_SEVERITY_UNSPECIFIED = 0;
+  CONFORMANCE_SEVERITY_PASS = 1;    // Conformant.
+  CONFORMANCE_SEVERITY_WARN = 2;    // SHOULD violation / advisory.
+  CONFORMANCE_SEVERITY_FAIL = 3;    // MUST violation.
+}
+
+// ---------------------------------------------------------------------------
+// Discovery
+// ---------------------------------------------------------------------------
+
+// Discovery layer hint.
+enum DiscoveryPath {
+  DISCOVERY_PATH_UNSPECIFIED = 0;
+  // Read aisp_list.json (default; safe; no execution).
+  DISCOVERY_PATH_INDEX = 1;
+  // Run aisp_list.py (fresh; needs python + execute permission).
+  DISCOVERY_PATH_SCRIPT = 2;
+  // Glob aisp/*_aisp/aisp.aisop.json (fallback).
+  DISCOVERY_PATH_GLOB = 3;
+}
+
+// Request to discover AISP skills.
+message DiscoverSkillsRequest {
+  // Directory path or registry root to search in.
+  string search_path = 1;
+  // Free-text query.
+  string query = 2;
+  // Category / tag filters.
+  repeated string keywords = 3;
+  // Preferred discovery path.
+  DiscoveryPath path = 4;
+  // Maximum results to return.
+  int32 max_results = 5;
+}
+
+// Response containing discovered skills.
+message DiscoverSkillsResponse {
+  repeated SkillSummary skills = 1;
+}
+
+// Summary of a discovered skill (the aisp_list.json row shape).
+message SkillSummary {
+  string id = 1;
+  string name = 2;
+  string summary = 3;
+  string path = 4;
+  string category = 5;
+  repeated string tags = 6;
+  repeated string when_to_use = 7;
+  RiskLevel risk_level = 8;
+  // Optional semantic match score (0.0 - 1.0).
+  double match_score = 9;
+}
+
+// The index (aisp_list.json) for a skill directory.
+message SkillList {
+  // Index format version (e.g. "1.0").
+  string aisp_list_version = 1;
+  repeated SkillSummary skills = 2;
+}
+
+// Request for the index of a skill directory.
+message GetSkillListRequest {
+  // Path to the aisp/ directory.
+  string aisp_dir = 1;
+}
+
+// Request for a single skill.
+message GetSkillRequest {
+  // Path to the skill directory or its aisp.aisop.json.
+  string skill_path = 1;
+}
+
+// ---------------------------------------------------------------------------
+// Conformance
+// ---------------------------------------------------------------------------
+
+// Request to check a skill's conformance.
+message CheckConformanceRequest {
+  // Path to the skill directory.
+  string skill_path = 1;
+  // The layered chain to check against.
+  LayeredChain chain = 2;
+  // Optional: specific standard files to use.
+  repeated string standard_files = 3;
+}
+
+// Conformance report.
+message ConformanceReport {
+  // Whether the skill is conformant (no FAIL results).
+  bool conformant = 1;
+  // Detected profile (e.g. "aisp.skill.v1").
+  string profile = 2;
+  // Per-rule results (M / R / SE / EC series).
+  repeated ConformanceResult results = 3;
+  // Provenance hashes recorded by a registry.
+  string contract_sha256 = 4;
+  string resources_sha256 = 5;
+  // Whether the skill self-declared trust (M6 violation if true).
+  bool self_declared_trust = 6;
+  // Number of non_negotiable rules whose enforced_by points to a real
+  // mechanism (machine-verified per M4).
+  int32 enforced_by_verified = 7;
+  // Number of non_negotiable rules total.
+  int32 non_negotiable_total = 8;
+}
+
+// Individual conformance check result.
+message ConformanceResult {
+  // Rule identifier (e.g. "M1", "M4", "R3", "SE1", "EC2").
+  string rule_id = 1;
+  // Rule name.
+  string name = 2;
+  // Result severity.
+  ConformanceSeverity severity = 3;
+  // Whether the check passed.
+  bool passed = 4;
+  // Detailed message.
+  string message = 5;
+  // Suggested fix (if failed).
+  string suggested_fix = 6;
+}

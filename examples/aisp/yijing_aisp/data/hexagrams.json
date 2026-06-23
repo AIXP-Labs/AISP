@@ -1,0 +1,20 @@
+{
+  "_comment": "Representative hexagram lookup table for the example skill (14 of the 64 King Wen hexagrams). The cast determines the hexagram from the six lines, so a reading always yields a hexagram; this table is a convenience for names/keywords. If a cast key is not listed here, identify the hexagram by its standard King Wen correspondence. Illustrates the read_only data resource declared in aisp_contract.resources.",
+  "encoding": "Each line is yin (6 or 8) or yang (7 or 9); 6 and 9 are changing lines. Read bottom (line 1) to top (line 6). The binary key uses 0 for yin, 1 for yang, bottom-to-top (lower trigram first, then upper). The trigrams array is [upper, lower].",
+  "hexagrams": {
+    "111111": { "number": 1, "name": "Qian", "english": "The Creative", "trigrams": ["Heaven", "Heaven"], "keyword": "creative force, initiative" },
+    "000000": { "number": 2, "name": "Kun", "english": "The Receptive", "trigrams": ["Earth", "Earth"], "keyword": "receptivity, yielding" },
+    "100010": { "number": 3, "name": "Zhun", "english": "Difficulty at the Beginning", "trigrams": ["Water", "Thunder"], "keyword": "initial obstacles, perseverance" },
+    "010001": { "number": 4, "name": "Meng", "english": "Youthful Folly", "trigrams": ["Mountain", "Water"], "keyword": "inexperience, learning" },
+    "111010": { "number": 5, "name": "Xu", "english": "Waiting", "trigrams": ["Water", "Heaven"], "keyword": "patience, nourishment" },
+    "010111": { "number": 6, "name": "Song", "english": "Conflict", "trigrams": ["Heaven", "Water"], "keyword": "tension, caution" },
+    "111000": { "number": 11, "name": "Tai", "english": "Peace", "trigrams": ["Earth", "Heaven"], "keyword": "harmony, prosperity, flow" },
+    "000111": { "number": 12, "name": "Pi", "english": "Standstill", "trigrams": ["Heaven", "Earth"], "keyword": "stagnation, withdrawal, blockage" },
+    "010010": { "number": 29, "name": "Kan", "english": "The Abysmal (Water)", "trigrams": ["Water", "Water"], "keyword": "danger, depth, perseverance through peril" },
+    "101101": { "number": 30, "name": "Li", "english": "The Clinging (Fire)", "trigrams": ["Fire", "Fire"], "keyword": "clarity, illumination, dependence" },
+    "100100": { "number": 51, "name": "Zhen", "english": "The Arousing (Thunder)", "trigrams": ["Thunder", "Thunder"], "keyword": "shock, sudden movement, awakening" },
+    "001001": { "number": 52, "name": "Gen", "english": "Keeping Still (Mountain)", "trigrams": ["Mountain", "Mountain"], "keyword": "stillness, meditation, restraint" },
+    "011011": { "number": 57, "name": "Xun", "english": "The Gentle (Wind)", "trigrams": ["Wind", "Wind"], "keyword": "gentle penetration, influence, adaptability" },
+    "110110": { "number": 58, "name": "Dui", "english": "The Joyous (Lake)", "trigrams": ["Lake", "Lake"], "keyword": "joy, openness, encouragement" }
+  }
+}

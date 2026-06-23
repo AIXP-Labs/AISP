@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aisp.dev/schemas/registry-manifest-v1.schema.json",
+  "title": "AISP Registry Manifest (v1)",
+  "description": "Registry-side provenance manifest for a distributed AISP skill folder.",
+  "type": "object",
+  "required": [
+    "manifest_version",
+    "protocol",
+    "skill_id",
+    "skill_version",
+    "contract_sha256",
+    "resources_sha256",
+    "package_sha256",
+    "resources"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "manifest_version": { "const": "1.0" },
+    "protocol": { "const": "AISP V1.0.0" },
+    "skill_id": { "type": "string", "pattern": "^[a-z0-9_]+_aisp$" },
+    "skill_version": { "type": "string", "minLength": 1 },
+    "source": { "type": ["string", "null"] },
+    "commit": { "type": ["string", "null"] },
+    "skill_path": {
+      "type": "string",
+      "description": "Portable package-internal skill folder label. In v1 this is the AISP skill id and must not be a host absolute path, URL, or traversal path.",
+      "pattern": "^[a-z0-9_]+_aisp$"
+    },
+    "contract_sha256": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
+    "resources_sha256": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
+    "package_sha256": {
+      "type": "string",
+      "description": "Canonical hash of package content evidence, excluding host-local paths and provenance fields such as source and commit.",
+      "pattern": "^[A-Fa-f0-9]{64}$"
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "path", "scope", "mode", "kind", "exists", "sha256"],
+        "additionalProperties": true,
+        "properties": {
+          "id": { "type": ["string", "null"] },
+          "path": { "type": ["string", "null"] },
+          "scope": { "enum": ["skill", "shared"] },
+          "mode": { "enum": ["read_only", "execute_only", "read_and_execute", null] },
+          "kind": { "type": ["string", "null"] },
+          "exists": { "type": "boolean" },
+          "sha256": { "type": ["string", "null"], "pattern": "^[A-Fa-f0-9]{64}$" }
+        }
+      }
+    }
+  }
+}

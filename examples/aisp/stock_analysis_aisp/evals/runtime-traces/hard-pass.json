@@ -1,0 +1,13 @@
+{
+  "runtime": "example-runtime",
+  "skill_id": "stock_analysis_aisp",
+  "contract_read": true,
+  "contract_visible_to_model": true,
+  "tool_enforcement": "hard",
+  "events": [
+    { "type": "contract_read" },
+    { "type": "contract_visible_to_model" },
+    { "type": "tool_enforcement", "enforcement": "hard", "tools": ["filesystem", "shell"] },
+    { "type": "execute_mode_dispatch", "node": "analyze", "mode": "agent", "dispatched_as": "agent" }
+  ]
+}

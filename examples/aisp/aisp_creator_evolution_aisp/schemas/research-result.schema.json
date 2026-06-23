@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aisp.dev/schemas/research-result.schema.json",
+  "title": "Research Result",
+  "description": "Terminal output of the shared research sub-graph (aisop.research).",
+  "type": "object",
+  "required": ["status", "findings", "citations"],
+  "additionalProperties": true,
+  "$comment": "CROSS-REF PRECISION (P6): every findings[].citation_ids[] value MUST resolve to a citations[].id (ground-every-finding). JSON Schema 2020-12 cannot express a value-level cross-array reference inline; validate_research enforces this referential check at runtime — every cited id is a known citation id, and a non-gap finding carries at least one citation_id.",
+  "properties": {
+    "status": { "enum": ["complete", "incomplete"] },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["claim"],
+        "properties": {
+          "claim": { "type": "string" },
+          "citation_ids": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "$comment": "Each entry MUST match some citations[].id; a finding with no citation_ids MUST be reported in gaps[] as unsupported."
+          },
+          "support_strength": {
+            "enum": ["direct", "indirect", "weak"],
+            "$comment": "Optional (B5). How strongly the cited source(s) back this finding: direct = a cited source states the claim explicitly; indirect = inferred/aggregated across cited sources; weak = thinly supported. Distinct from confidence (the synthesizer's overall belief); support_strength describes the citation linkage itself. Advisory only — it never relaxes the ground-every-finding rule."
+          },
+          "confidence": { "enum": ["low", "medium", "high"] }
+        }
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "$comment": "Optional (B4). EXPLICIT disagreement record. When two or more sources materially disagree on the same point, the synthesizer MUST record the divergence here rather than silently merging or dropping one side. A non-empty conflicts[] is informational, NOT an automatic incomplete; validate_research decides status based on grounding and whether the conflict blocks the required questions.",
+      "items": {
+        "type": "object",
+        "required": ["topic", "positions"],
+        "properties": {
+          "topic": { "type": "string", "minLength": 1, "$comment": "The point the sources disagree on." },
+          "positions": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "required": ["claim", "citation_ids"],
+              "properties": {
+                "claim": { "type": "string", "minLength": 1 },
+                "citation_ids": {
+                  "type": "array",
+                  "items": { "type": "string", "minLength": 1 },
+                  "$comment": "Each entry MUST match some citations[].id; every conflicting position MUST be grounded in a real citation."
+                }
+              }
+            }
+          },
+          "resolution": {
+            "enum": ["unresolved", "preferred", "context_dependent"],
+            "$comment": "unresolved = left open (SHOULD also surface in gaps[]); preferred = one position chosen with stated rationale; context_dependent = both hold under different conditions."
+          },
+          "rationale": { "type": "string", "$comment": "Why the resolution was chosen; REQUIRED in practice when resolution == 'preferred'." }
+        }
+      }
+    },
+    "citations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "source"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "source": { "type": "string", "minLength": 1 },
+          "retrieved": { "type": "string" }
+        }
+      },
+      "$comment": "citations[].id values MUST be unique so finding->citation references resolve unambiguously."
+    },
+    "gaps": { "type": "array", "items": { "type": "string" } }
+  }
+}

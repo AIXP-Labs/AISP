@@ -1,0 +1,157 @@
+[
+  {
+    "role": "system",
+    "content": {
+      "protocol": "AISP V1.0.0",
+      "axiom_0": "Human_Sovereignty_and_Wellbeing",
+      "flow_format": "mermaid",
+      "template_version": "1.0.0",
+      "last_verified_date": "2026-06-19",
+      "spec_version_pinned": {
+        "aisop": "AISOP V1.0.0 — execution language (.aisop.json, sys.* family); AISP's only base",
+        "agent_skills": "Agent Skills Specification (agentskills.io) - complementary; default-generated but core-optional same-folder SKILL.md sidecar bridge",
+        "policy_as_prompt": "Policy-as-Prompt (arXiv 2509.23994) — NL rules are soft; only sys.* is hard",
+        "skill_md_supply_chain": "Under the Hood of SKILL.md: Semantic Supply-chain Attacks (arXiv 2605.11418)"
+      },
+      "health_check": "If today > last_verified_date + 180 days, emit STANDARD_STALE warning.",
+      "id": "aisp_standard.core",
+      "version": "1.0.0",
+      "name": "AISP Conformance Standard — Core v1.0.0",
+      "license": "Apache-2.0",
+      "output_mode": {
+        "L0": "Output JSON in ENGLISH: {rule_id, severity, passed, message}",
+        "L1": "Output helpfully in User's exact language and script variant",
+        "output": "L1"
+      },
+      "description": "Core conformance reference for AISP skills. Defines M1-M6 (skill conformance) and R1-R7 (runtime conformance), the aisp_contract schema, the enforced_by grammar, the two-tier model (Tier A execution / Tier S contract), and the discovery contract. Loadable extensions (security, ecosystem) provide additional checks. An AISP skill is first a legal AISOP V1.0.0 program; this standard adds the skill-package conformance layer on top. Not an executable flow.",
+      "fractal_exempt": "Standard library reference module — no executable flow graph.",
+      "tools": [],
+      "params": {
+        "skill_path": "string|null, default: null, Path to the aisp/<id>_aisp/ skill folder to check."
+      },
+      "aisp_governance_params": {
+        "description": "AISP governance parameters for all conformant skills.",
+        "template": {
+          "protocol": "AISP V1.0.0 — declared in system.content; the file is still structurally an AISOP V1.0.0 program",
+          "axiom_0": "Human_Sovereignty_and_Wellbeing",
+          "license": "Apache-2.0 (default, SHOULD)",
+          "profile": "aisp.skill.v1 (in user.content.aisp_contract; detected by the aisp.skill. prefix)"
+        },
+        "enforcement": "Every aisp.aisop.json MUST declare protocol = 'AISP V1.0.0' and contain user.content.aisp_contract. The skill folder name MUST equal id and end with _aisp.",
+        "open_world_dependency": {
+          "description": "AISP relies on AISOP's open-world validation. R4: the underlying AISOP runtime MUST tolerate unknown keys (aisp_contract, license) and MUST NOT gate on the protocol value. Closed-world validators that reject unknown keys, or that hard-check protocol == 'AISOP V1.0.0', will reject AISP files (a declared dependency, not a defect).",
+          "spec_ref": "AISP_Protocol.md §4.2 R4, §24"
+        },
+        "two_tiers": {
+          "description": "A skill file has two tiers.",
+          "tier_a_execution": "aisop.main + functions + sys.* + tools/params — holds role/principles/knowledge/constraints/failure/confirm/validation/structured-output/resource-usage/state.",
+          "tier_s_contract": "user.content.aisp_contract — holds only invocation + non_negotiable.enforced_by + discovery + risk_level + resources (inventory).",
+          "rule": "The contract MUST NOT duplicate Tier A content (role/principles/failure/output). See M3 and §15."
+        }
+      },
+      "skill_conformance": {
+        "description": "M1-M6: machine-verifiable skill conformance rules. A conformant AISP skill satisfies all M rules.",
+        "rules": {
+          "M1": {
+            "name": "Legal AISOP Program",
+            "check": "The skill file is structurally a legal AISOP V1.0.0 program: a 2-message array; required fields protocol/axiom_0/id/name/version/flow_format/loading_mode present; user.content has instruction/aisop/functions; aisop.main exists. The protocol field MUST declare 'AISP V1.0.0'. For AISP skills, loading_mode MUST be exactly 'node'. license SHOULD be present (default 'Apache-2.0'). Each function MUST contain at least one string-valued numeric execution step (step1, step2, ...); metadata keys such as step_note do not count. Function execute_mode declarations are statically checked: missing values fall back inline with a warning, explicit values MUST be inline or agent, and non-agent nodes with more than 10 numeric stepN execution steps SHOULD be reviewed for agent dispatch. The 10-step threshold is a review heuristic, not a restriction on using agent for shorter high-isolation or high-impact nodes.",
+            "severity": "FAIL",
+            "how_to_verify": "Parse aisp.aisop.json. Assert data is a 2-element array. Assert data[0].content has protocol == 'AISP V1.0.0', axiom_0, id, name, version, flow_format, and loading_mode == 'node'. Assert data[1].content has instruction, aisop.main, functions. Warn if license missing. For each function, fail if it has no numeric stepN field or any numeric stepN value is not a string; warn when execute_mode is omitted, fail if explicit execute_mode is not inline or agent, and warn when a non-agent function has more than 10 numeric stepN execution steps. Do not warn merely because a shorter node is agent; short nodes may be agent when isolation, source gathering, generation, validation, or decision impact justifies it."
+          },
+          "M2": {
+            "name": "Folder, File Name, and _aisp Suffix",
+            "check": "The skill lives at aisp/<id>/aisp.aisop.json; <id> == the folder name and ends with '_aisp'.",
+            "severity": "FAIL",
+            "how_to_verify": "Assert the file name is exactly 'aisp.aisop.json'. Assert the parent folder name equals system.content.id. Assert the folder name matches /^[a-z0-9_]+_aisp$/."
+          },
+          "M3": {
+            "name": "aisp_contract Present (Real Object, User Message)",
+            "check": "user.content.aisp_contract is a real JSON object (not a string); its profile starts with 'aisp.skill.'; it contains invocation and non_negotiable.",
+            "severity": "FAIL",
+            "how_to_verify": "Assert isinstance(data[1].content.aisp_contract, object). Assert profile startswith 'aisp.skill.'. Assert invocation and non_negotiable are present. FAIL if the contract is a JSON-in-string or lives in system_prompt."
+          },
+          "M4": {
+            "name": "enforced_by Points to a Real Mechanism",
+            "check": "Every non_negotiable[].enforced_by points to a mechanism that actually exists in the skill, per the enforced_by grammar.",
+            "severity": "FAIL",
+            "how_to_verify": "For each enforced_by: if of the form '<node>.stepN:<mechanism>', assert stepN is a numeric execution step, functions[node][stepN] exists, and begins with that mechanism. Metadata fields such as step_note do not satisfy enforced_by. If 'aisop.main', assert the required node/branch exists in the graph. If 'tools', assert tools is restricted (and note it is hard only when the runtime enforces tool permissions)."
+          },
+          "M5": {
+            "name": "Resource Path Safety",
+            "check": "Each resources[].path is relative, confined to the skill folder or _shared/ (scope:shared), with no '../' escape. mode is one of read_only|execute_only|read_and_execute. Scripts declare requires_tools.",
+            "severity": "FAIL",
+            "how_to_verify": "For each resource: assert path is relative and does not contain '..'. Assert mode in the enum. If kind == 'script', warn if requires_tools is absent. Warn for any file in the folder not declared in resources."
+          },
+          "M6": {
+            "name": "No Self-Declared Trust",
+            "check": "The skill MUST NOT self-declare trust (trusted/verified/safe). Trust is judged by the consumer / registry / user / scanner.",
+            "severity": "FAIL",
+            "how_to_verify": "Scan the contract and metadata for trusted/verified/safe == true (or equivalent self-assertions). FAIL if present."
+          }
+        }
+      },
+      "runtime_conformance": {
+        "description": "R1-R7: runtime conformance rules. Checked against a runtime, not a static skill file.",
+        "rules": {
+          "R1": {
+            "name": "Read Contract; Do Not Skip Required Nodes",
+            "check": "The runtime reads user.content.aisp_contract as the skill contract; does not skip required nodes of aisop.main; does not bypass sys.io.confirm (inherited from Axiom 0).",
+            "severity": "FAIL"
+          },
+          "R2": {
+            "name": "Enforce enforced_by",
+            "check": "For each non_negotiable, the runtime enforces the hard constraint via the mechanism its enforced_by points to.",
+            "severity": "FAIL"
+          },
+          "R3": {
+            "name": "Do Not Hide the Contract",
+            "check": "aisp_contract is in the user message; the runtime hands it to the model with the user message and MUST NOT hide or strip it. No separate render step is required. The instruction commands obedience via a strong directive.",
+            "severity": "FAIL"
+          },
+          "R4": {
+            "name": "Open-World Validation of the Underlying AISOP Runtime",
+            "check": "The underlying AISOP runtime applies open-world validation (tolerates unknown keys on system.content and user.content) and does not gate on the protocol value (accepts 'AISP V1.0.0').",
+            "severity": "FAIL"
+          },
+          "R5": {
+            "name": "Trust Gate; Prefer the Index",
+            "check": "Before handling an untrusted skill/resource, the runtime SHOULD pass it through a user trust gate; SHOULD prefer reading aisp_list.json (no script execution).",
+            "severity": "WARNING"
+          },
+          "R6": {
+            "name": "Tool-Enforcement Declaration",
+            "check": "A runtime SHOULD declare whether its tool enforcement is hard (tool permissions actually enforced) or advisory. If advisory, enforced_by: tools MUST NOT be treated as a hard guarantee.",
+            "severity": "WARNING"
+          },
+          "R7": {
+            "name": "Honor execute_mode (Dispatch Fidelity)",
+            "check": "The runtime MUST honor each node's execute_mode (an inherited AISOP node-level field; AISOP spec §5.2.8). A node declared execute_mode 'agent' MUST be dispatched to an independent sub-agent and MUST NOT be collapsed inline. A node declared execute_mode 'inline' executes in the current context. If execute_mode is omitted, the runtime falls back to inline and static validation warns so dispatch intent can be made explicit. A conformant AISP skill MUST NOT declare any explicit execute_mode value other than inline or agent. execute_mode is a dispatch attribute honored by the runtime, NOT an enforced_by mechanism.",
+            "severity": "FAIL"
+          }
+        }
+      },
+      "enforced_by_grammar": {
+        "description": "The enforced_by grammar — the policy-as-code binding that distinguishes AISP from prose skills.",
+        "forms": {
+          "node_step_mechanism": "<node>.stepN:<mechanism> — a sys.* at a specific numeric execution step (most precise, recommended), e.g. 'interpret.step1:sys.assert'. Verified: node and numeric step exist and that step begins with that mechanism.",
+          "aisop_main": "aisop.main — enforced by graph topology (a required node/branch). Verified: the required node/branch exists.",
+          "tools": "tools — enforced by the tools allow-list. Hard ONLY when the runtime truly enforces tool permissions; otherwise declarative only and MUST NOT be counted as a hard guarantee."
+        },
+        "principle": "policy-as-prompt (NL rule; soft) vs policy-as-code (enforced_by -> sys.*; hard). Only the latter is a real guarantee. Hard guarantees come only from sys.*."
+      },
+      "discovery_contract": {
+        "description": "The runtime-independent discovery contract.",
+        "paths": {
+          "index": "Read aisp/aisp_list.json (default; safe; no execution; may be stale).",
+          "script": "Run `python -B aisp/aisp_list.py [--json]` (fresh; --json regenerates the index; needs python + execute permission and avoids __pycache__/ residue).",
+          "glob": "Glob aisp/*_aisp/aisp.aisop.json and read each aisp_contract (the script's internal logic)."
+        },
+        "truth_model": "The skill folder is the single source of truth; aisp_list.py is the generator; aisp_list.json is the cache.",
+        "script_safety": "aisp_list.py MUST be minimal, auditable, zero-dependency, and only write aisp_list.json with no other side effects."
+      },
+      "summary": "M1-M6 skill conformance + R1-R7 runtime conformance for AISP skills.",
+      "loading_mode": "node",
+      "system_prompt": "AISP conformance standard and contract reference. Enforce skill-package conformance rigorously: a skill is first a legal AISOP program, then conformant to M1-M6. Hard guarantees come only from enforced_by -> sys.*; trust is never self-declared. Mirror User's exact language and script variant.\nAlign Axiom 0: Human Sovereignty and Wellbeing."
+    }
+  }
+]

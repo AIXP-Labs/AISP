@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aisp.dev/schemas/aisp-contract-v1.schema.json",
+  "title": "AISP aisp_contract (v1)",
+  "description": "JSON Schema for user.content.aisp_contract — the AISP skill contract (Tier S). The contract is a real JSON object located in the user message of an aisp.aisop.json program (AISP V1.0.0). This schema validates only the contract object, not the surrounding AISOP program.",
+  "type": "object",
+  "required": [
+    "profile",
+    "invocation",
+    "non_negotiable"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "profile": {
+      "type": "string",
+      "description": "Contract schema marker. A runtime detects an AISP skill by the 'aisp.skill.' prefix; only a major change (v1 -> v2) is incompatible.",
+      "pattern": "^aisp\\.skill\\.v[0-9]+$"
+    },
+    "invocation": {
+      "type": "object",
+      "description": "Triggering metadata, decided before execution.",
+      "required": [
+        "when_to_use",
+        "when_not_to_use"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "manual_only",
+            "auto_or_manual",
+            "auto_preferred",
+            "internal_only"
+          ]
+        },
+        "when_to_use": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "when_not_to_use": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "non_negotiable": {
+      "type": "array",
+      "description": "Red lines, each bound to a real enforcement mechanism (policy-as-code).",
+      "items": {
+        "type": "object",
+        "required": [
+          "rule",
+          "enforced_by"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "rule": {
+            "type": "string",
+            "description": "The red line, stated in natural language.",
+            "minLength": 1
+          },
+          "enforced_by": {
+            "type": "string",
+            "description": "Binding to a real mechanism: 'aisop.main' | 'tools' | '<node>.stepN:<mechanism>'. The step segment must be a numeric execution step such as step1.",
+            "pattern": "^(aisop\\.main|tools|[A-Za-z0-9_]+\\.step[1-9][0-9]*:sys\\.[A-Za-z0-9_.]+)$"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "discovery": {
+      "type": "object",
+      "description": "Registry / routing metadata.",
+      "additionalProperties": true,
+      "properties": {
+        "category": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "risk_level": {
+      "type": "string",
+      "description": "Single risk grade for trust / registry (routing/governance metadata, not a hard enforcement mechanism).",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ]
+    },
+    "resources": {
+      "type": "array",
+      "description": "Resource inventory (declared, not used here). Usage happens in functions via sys.io.read / sys.run.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "path",
+          "kind",
+          "mode"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "description": "Relative path, confined to the skill folder or _shared/; no '../' escape, no absolute path (M5 / SE1).",
+            "pattern": "^(?!/)(?![A-Za-z]:)(?![A-Za-z][A-Za-z0-9+.-]*://)(?!.*(^|[\\\\/])\\.\\.([\\\\/]|$)).+$"
+          },
+          "kind": {
+            "type": "string",
+            "description": "Open vocabulary: data / script / reference / asset / template / ..."
+          },
+          "mode": {
+            "type": "string",
+            "description": "Controlled enum — the security gate.",
+            "enum": [
+              "read_only",
+              "execute_only",
+              "read_and_execute"
+            ]
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "skill",
+              "shared"
+            ]
+          },
+          "sha256": {
+            "type": "string",
+            "description": "Optional content hash. SHOULD be present when the skill is distributed through a registry (supply-chain integrity).",
+            "pattern": "^[A-Fa-f0-9]{64}$"
+          },
+          "when": {
+            "type": "string",
+            "description": "When to load the resource."
+          },
+          "requires_tools": {
+            "type": "array",
+            "description": "Tools a script needs (least authority).",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

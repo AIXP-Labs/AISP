@@ -1,0 +1,462 @@
+{
+  "schema": "aisp.script-behavior.v1",
+  "scope": "replayable CLI behavior evidence for executable script resources; local regression only, not semantic safety proof",
+  "scripts": [
+    {
+      "path": "aisp_reference_tools/aisp_validate.py",
+      "cases": [
+        {
+          "name": "valid package passes with expected warning",
+          "kind": "positive",
+          "argv": [
+            "python",
+            "-B",
+            "aisp_reference_tools/aisp_validate.py",
+            "."
+          ],
+          "expected_exit": 0,
+          "expect_stdout_contains": [
+            "PASS",
+            "AISP_W_R6_TOOLS_CONDITIONAL"
+          ]
+        },
+        {
+          "name": "strict readme remains consistent",
+          "kind": "boundary",
+          "argv": [
+            "python",
+            "-B",
+            "aisp_reference_tools/aisp_validate.py",
+            "--strict-readme",
+            "."
+          ],
+          "expected_exit": 0,
+          "expect_stdout_contains": [
+            "PASS"
+          ]
+        },
+        {
+          "name": "warnings fail mode rejects retained tools warning",
+          "kind": "failure",
+          "argv": [
+            "python",
+            "-B",
+            "aisp_reference_tools/aisp_validate.py",
+            "--warnings-fail",
+            "."
+          ],
+          "expected_exit": 1,
+          "expect_stdout_contains": [
+            "AISP_W_R6_TOOLS_CONDITIONAL"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "aisp_reference_tools/aisp_hash.py",
+      "cases": [
+        {
+          "name": "hash manifest emits skill id",
+          "kind": "positive",
+          "argv": [
+            "python",
+            "-B",
+            "aisp_reference_tools/aisp_hash.py",
+            ".",
+            "--json"
+          ],
+          "expected_exit": 0,
+          "expect_stdout_contains": [
+            "\"skill_id\": \"aisp_creator_evolution_aisp\""
+          ]
+        },
+        {
+          "name": "hash manifest accepts source and commit metadata",
+          "kind": "boundary",
+          "argv": [
+            "python",
+            "-B",
+            "aisp_reference_tools/aisp_hash.py",
+            ".",
+            "--source",
+            "local",
+            "--commit",
+            "test",
+            "--json"
+          ],
+          "expected_exit": 0,
+          "expect_stdout_contains": [
+            "\"source\": \"local\"",
+            "\"commit\": \"test\""
+          ]
+        },
+        {
+          "name": "hash rejects missing skill path",
+          "kind": "failure",
+          "argv": [
+            "python",
+            "-B",
+            "aisp_reference_tools/aisp_hash.py",
+            "missing_aisp",
+            "--json"
+          ],
+          "expected_exit": 1,
+          "expect_stdout_contains": []
+        }
+      ]
+    },
+    {
+      "path": "aisp_reference_tools/aisp_readme.py",
+      "cases": [
+        {
+          "name": "readme projection check passes",
+          "kind": "positive",
+          "argv": [
+            "python",
+            "-B",
+            "aisp_reference_tools/aisp_readme.py",
+            ".",
+            "--check"
+          ],
+          "expected_exit": 0,
+          "expect_stdout_contains": [
+            "PASS ok"
+          ]
+        },
+        {
+          "name": "readme print emits current title",
+          "kind": "boundary",
+          "argv": [
+            "python",
+            "-B",
+            "aisp_reference_tools/aisp_readme.py",
+            ".",
+            "--print"
+          ],
+          "expected_exit": 0,
+          "expect_stdout_contains": [
+            "# AISP Creator & Evolution"
+          ]
+        },
+        {
+          "name": "readme rejects missing skill path",
+          "kind": "failure",
+          "argv": [
+            "python",
+            "-B",
+            "aisp_reference_tools/aisp_readme.py",
+            "missing_aisp",
+            "--check"
+          ],
+          "expected_exit": 1,
+          "expect_stdout_contains": []
+        }
+      ]
+    },
+    {
+      "path": "aisp_reference_tools/aisp_skill_md.py",
+      "cases": [
+        {
+          "name": "skill md projection check passes",
+          "kind": "positive",
+          "argv": [
+            "python",
+            "-B",
+            "aisp_reference_tools/aisp_skill_md.py",
+            ".",
+            "--check"
+          ],
+          "expected_exit": 0,
+          "expect_stdout_contains": [
+            "PASS ok"
+          ]
+        },
+        {
+          "name": "skill md print emits current title",
+          "kind": "boundary",
+          "argv": [
+            "python",
+            "-B",
+            "aisp_reference_tools/aisp_skill_md.py",
+            ".",
+            "--print"
+          ],
+          "expected_exit": 0,
+          "expect_stdout_contains": [
+            "# AISP Creator & Evolution"
+          ]
+        },
+        {
+          "name": "skill md rejects missing skill path",
+          "kind": "failure",
+          "argv": [
+            "python",
+            "-B",
+            "aisp_reference_tools/aisp_skill_md.py",
+            "missing_aisp",
+            "--check"
+          ],
+          "expected_exit": 1,
+          "expect_stdout_contains": []
+        }
+      ]
+    },
+    {
+      "path": "aisp_reference_tools/aisp_check_runtime_trace.py",
+      "cases": [
+        {
+          "name": "hard runtime trace with dispatch evidence passes",
+          "kind": "positive",
+          "argv": [
+            "python",
+            "-B",
+            "aisp_reference_tools/aisp_check_runtime_trace.py",
+            ".",
+            "evals/runtime-traces/hard-pass.json"
+          ],
+          "expected_exit": 0,
+          "expect_stdout_contains": [
+            "PASS"
+          ]
+        },
+        {
+          "name": "top-level hard without event keeps attested warning",
+          "kind": "boundary",
+          "argv": [
+            "python",
+            "-B",
+            "aisp_reference_tools/aisp_check_runtime_trace.py",
+            ".",
+            "evals/runtime-traces/hard-attested-no-event.json"
+          ],
+          "expected_exit": 0,
+          "expect_stdout_contains": [
+            "AISP_W_R6_TOOLS_ATTESTED_NOT_VERIFIED"
+          ]
+        },
+        {
+          "name": "non-object trace fails cleanly",
+          "kind": "failure",
+          "argv": [
+            "python",
+            "-B",
+            "aisp_reference_tools/aisp_check_runtime_trace.py",
+            ".",
+            "evals/runtime-traces/bad-shape.json"
+          ],
+          "expected_exit": 1,
+          "expect_stdout_contains": [
+            "AISP_E_TRACE_SHAPE"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "aisp_reference_tools/aisp_validate_agent_skill_bridge.py",
+      "cases": [
+        {
+          "name": "bridge validator exposes cli help",
+          "kind": "positive",
+          "argv": [
+            "python",
+            "-B",
+            "aisp_reference_tools/aisp_validate_agent_skill_bridge.py",
+            "--help"
+          ],
+          "expected_exit": 0,
+          "expect_stdout_contains": [
+            "Validate Agent Skills"
+          ]
+        },
+        {
+          "name": "current package sidecar passes bridge check",
+          "kind": "boundary",
+          "argv": [
+            "python",
+            "-B",
+            "aisp_reference_tools/aisp_validate_agent_skill_bridge.py",
+            "--json",
+            "."
+          ],
+          "expected_exit": 0,
+          "expect_stdout_contains": [
+            "\"conformant\": true"
+          ]
+        },
+        {
+          "name": "bridge validator rejects missing arguments",
+          "kind": "failure",
+          "argv": [
+            "python",
+            "-B",
+            "aisp_reference_tools/aisp_validate_agent_skill_bridge.py"
+          ],
+          "expected_exit": 2,
+          "expect_stdout_contains": []
+        }
+      ]
+    },
+    {
+      "path": "scripts/validate_aisp_skill.py",
+      "cases": [
+        {
+          "name": "local package passes creator validator",
+          "kind": "positive",
+          "argv": [
+            "python",
+            "-B",
+            "scripts/validate_aisp_skill.py",
+            "."
+          ],
+          "expected_exit": 0,
+          "expect_stdout_contains": [
+            "\"m1_to_m6_pass\": true",
+            "\"safety_pass\": true"
+          ]
+        },
+        {
+          "name": "file target reports folder-shape issue",
+          "kind": "boundary",
+          "argv": [
+            "python",
+            "-B",
+            "scripts/validate_aisp_skill.py",
+            "aisp.aisop.json"
+          ],
+          "expected_exit": 0,
+          "expect_stdout_contains": [
+            "\"m1_to_m6_pass\": false",
+            "AISP_E_M2_SUFFIX"
+          ]
+        },
+        {
+          "name": "missing folder reports filename issue",
+          "kind": "failure",
+          "argv": [
+            "python",
+            "-B",
+            "scripts/validate_aisp_skill.py",
+            "missing_aisp"
+          ],
+          "expected_exit": 0,
+          "expect_stdout_contains": [
+            "AISP_E_M2_FILENAME"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "scripts/simulate_aisp_flow.py",
+      "cases": [
+        {
+          "name": "explicit package simulation passes",
+          "kind": "positive",
+          "argv": [
+            "python",
+            "-B",
+            "scripts/simulate_aisp_flow.py",
+            "."
+          ],
+          "expected_exit": 0,
+          "expect_stdout_contains": [
+            "\"pass\": true",
+            "creator_regression"
+          ]
+        },
+        {
+          "name": "default cwd simulation passes",
+          "kind": "boundary",
+          "argv": [
+            "python",
+            "-B",
+            "scripts/simulate_aisp_flow.py"
+          ],
+          "expected_exit": 0,
+          "expect_stdout_contains": [
+            "\"pass\": true",
+            "creator_regression"
+          ]
+        },
+        {
+          "name": "missing folder simulation fails cleanly",
+          "kind": "failure",
+          "argv": [
+            "python",
+            "-B",
+            "scripts/simulate_aisp_flow.py",
+            "missing_aisp"
+          ],
+          "expected_exit": 1,
+          "expect_stdout_contains": [
+            "\"pass\": false",
+            "LOAD:"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "scripts/check_generated_candidate.py",
+      "cases": [
+        {
+          "name": "release gate exposes cli help without recursion",
+          "kind": "positive",
+          "argv": [
+            "python",
+            "-B",
+            "scripts/check_generated_candidate.py",
+            "--help"
+          ],
+          "expected_exit": 0,
+          "expect_stdout_contains": [
+            "Read-only release gate"
+          ]
+        },
+        {
+          "name": "release gate rejects missing arguments",
+          "kind": "boundary",
+          "argv": [
+            "python",
+            "-B",
+            "scripts/check_generated_candidate.py"
+          ],
+          "expected_exit": 2,
+          "expect_stdout_contains": []
+        },
+        {
+          "name": "release gate rejects default candidate without sidecar",
+          "kind": "boundary",
+          "argv": [
+            "python",
+            "-B",
+            "scripts/check_generated_candidate.py",
+            "../../../tests/fixtures/valid/simple_aisp",
+            "--creator-root",
+            ".",
+            "--output-path",
+            "../../../tests/fixtures/valid"
+          ],
+          "expected_exit": 1,
+          "expect_stdout_contains": [
+            "AISP_E_CANDIDATE_SIDECAR_MISSING_DEFAULT"
+          ]
+        },
+        {
+          "name": "release gate rejects missing candidate root",
+          "kind": "failure",
+          "argv": [
+            "python",
+            "-B",
+            "scripts/check_generated_candidate.py",
+            "missing_aisp",
+            "--creator-root",
+            "."
+          ],
+          "expected_exit": 1,
+          "expect_stdout_contains": [
+            "\"pass\": false"
+          ]
+        }
+      ]
+    }
+  ]
+}
