@@ -148,7 +148,7 @@ Warning 不是同一种信号：
 | `AISP_W_R6_TOOLS_CONDITIONAL` | 技能使用 `enforced_by: tools`，但当前检查是纯静态或缺少 hard evidence。 | 静态审查中可预期。严格发布门需要用事件型 runtime trace 或带 provenance 的 hard tool capability evidence 消解。 |
 | `AISP_W_R6_TOOLS_ATTESTED_NOT_VERIFIED` | hard-enforcement 声明缺少检查器所要求的事件/provenance 结构。 | 不得当作 proof；结构满足也不代表证据已获独立认证。 |
 | `AISP_W_M5_AMBIGUOUS_USE` | 字面量路径对应不同 scope 的资源；至少一项声明允许该操作，但目标仍不明确。若所有候选都禁止，SE3 直接失败。 | 审查运行期 scope 解析和门控，或使用不同路径；不合并权限，也不把 warning 当模式证明。 |
-| M7 / 旧 EC7 接口失败 | 必需接口缺失、旧版、损坏或漂移。 | 核心失败，无 opt-out；精确识别的旧投影须明确迁移，固定正文漂移先修复再写。执行器配置与版本策略格式通过不认证执行器。 |
+| M7 / 旧 EC7 接口失败 | 必需接口缺失、旧版、损坏或漂移。 | 核心失败，无 opt-out；旧版或被改过的接口须备份、删除后重新生成。执行器配置与版本策略格式通过不认证执行器。 |
 | EC8 generated README warnings | 非 strict 模式下，单技能 README 缺失、手写或漂移。 | 重新生成；或使用 strict release profile 让漂移失败。 |
 | Missing `execute_mode` warnings | 函数未显式声明 dispatch intent；runtime fallback inline。 | 兼容性 fallback 可接受，但发布级示例应显式声明 `inline` 或 `agent`。 |
 | `AISP_W_M1_EXECUTE_MODE_AGENT_RECOMMENDED` | 非 agent 函数超过 10 个数字 `stepN` 执行步骤。 | 审查是否应使用 `agent`。该阈值是审查启发式，不是短高隔离节点使用 `agent` 的限制条件。 |

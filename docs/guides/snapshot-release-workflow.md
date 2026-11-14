@@ -98,19 +98,14 @@ python -B tools/aisp_readme.py examples/aisp/aisp_creator_evolution_aisp --write
 python -B tools/aisp_skill_md.py examples/aisp/aisp_creator_evolution_aisp --write
 ```
 
-If the release history is rewritten after this step, for example by squashing
-to a single init-style commit or by force-publishing a recreated history, rerun
-the final release snapshot refresh after the rewrite and before publishing.
-Otherwise `source_commit` can name a commit that no longer exists in the
-published repository.
+Repository releases preserve existing history. Reinitializing this repository
+or force-pushing rewritten history is prohibited. Normal commits and ordinary
+pushes require explicit authorization.
 
-Single-commit init-force releases are a special case: a commit cannot embed its
-own final hash in tracked files, because changing those files changes the
-commit hash. For that profile, set `snapshot_state` to
-`init_force_single_commit` and `source_commit` to
-`self-contained-init-force-release`, then treat the published release commit
-plus the manifest hashes as local integrity evidence only. Do not reuse this
-sentinel for normal multi-commit releases where a concrete source commit exists.
+For snapshot provenance, record an existing source commit whose copied bytes
+were verified, not the packaging commit's own final hash. Keep an unverified
+working-tree state until source verification is authorized and completed;
+never invent a commit or imply that a working-tree marker is verified provenance.
 
 ---
 

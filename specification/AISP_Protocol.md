@@ -149,9 +149,10 @@ This protocol is documented in several artifact families. When they conflict, th
 |----------|------|-----------|
 | `AISP_Protocol.md` (and `AISP_Protocol_cn.md` translation) | Skill-package specification, structure, contract schema, rules | **Authoritative** for skill structure and rules |
 | `standards/AISP_Standard.*.aisop.json` | Formal conformance rule definitions (M / R / SE / EC series) | **Authoritative** for machine-verifiable rule semantics |
-| `aisp.proto` | Discovery and conformance data structures and service APIs | **Authoritative** for data-object schemas and service contracts |
+| `schemas/*.schema.json` | Covered structures of the named native JSON artifacts | Defines those JSON constraints, not complete package or runtime validation |
+| `aisp.proto` | Discovery and conformance service transport objects and APIs | **Authoritative** for those service wire types and API signatures |
 
-**Conflict resolution**: when any artifact appears to contradict another, this Markdown specification is the tie-breaker for *rules and structure*; `aisp.proto` is the tie-breaker for *data shapes and API signatures*. Translations (e.g. `AISP_Protocol_cn.md`) are always non-normative — the English text governs in case of divergence.
+**Conflict resolution**: this Markdown specification is the tie-breaker for *protocol rules and package structure*. Each JSON Schema describes the covered constraints of its named native JSON artifact; schema success does not replace filesystem, cross-file or runtime checks. `aisp.proto` governs only its service transport objects and API signatures, not the native `aisp.aisop.json`, index, trace or manifest file formats. Protobuf/ProtoJSON field and enum representations are not substitutes for those native JSON formats. Translations (e.g. `AISP_Protocol_cn.md`) are always non-normative — the English text governs in case of divergence.
 
 > **What this document is NOT.** AISP does not redefine the AISOP language (graph syntax, `sys.*` semantics) — that is `aisop.dev`. AISP does not delegate its lifecycle to another protocol; generation / evolution / distribution are AISP-native and tool-agnostic. AISP defines only the *skill package*: how an AISOP program becomes a discoverable, invocable, governable, distributable skill.
 
@@ -351,7 +352,9 @@ Inherited optional fields retain their types when present: `system.content.summa
 
 The skill contract is **`user.content.aisp_contract`** — a **real JSON object**, in the **user message**, alongside `instruction` / `user_input` / `aisop` / `functions`; the `instruction` commands the model to obey it via a strong directive (§14). (Program identity metadata `id` / `name` / `version` / `license` / `tools` / `params` stays in `system.content`.)
 
-```json
+The following is field notation with placeholders, optional markers and alternatives, not valid JSON or a runnable contract. For a concrete program, see §22.
+
+```text
 {
   "profile": "aisp.skill.v1",
   "invocation": { "mode": "auto_or_manual", "when_to_use": ["string"], "when_not_to_use": ["string"] },
@@ -557,7 +560,7 @@ Resources are the attack surface (scripts / templates / examples / remote URLs c
 7. A folder has a file not declared in `resources` → a validator SHOULD warn.
 8. `aisp_list.py` is a script, so **running it = executing code**: it MUST be minimal, auditable, zero-dependency, and only write `aisp_list.json` with no other side effects; untrusted directories SHOULD prefer reading `aisp_list.json` (no execution), passing a trust gate before running the script.
 9. **Axiom 0**: every skill inherits "Human Sovereignty and Wellbeing"; `sys.io.confirm` 🔒 cannot be bypassed.
-10. **Read-only during execution**: an AISP runtime SHOULD treat skill packages (files and resources) as read-only during normal execution. Modifications happen only through a deliberate evolution/edit step.
+10. **Read-only during execution**: an AISP runtime SHOULD treat skill packages (files and resources) as read-only during normal execution. Modifications happen only through a deliberate evolution/edit step. What a skill writes while it runs for its own use is executor cache, not formal content. By default it goes into the run's own working area inside the cache directory the host gives the executor, not into the skill's package; the user MAY choose another location, including through the executor's own cache-directory setting. Deleting the cache directory deletes this cache. With the default executor SoulRun, the cache directory is `<working folder>/.soulrun_cache`: SoulRun makes a numbered folder for each run, with its working files under `_work/`, AISP and AIAP programs share that one cache directory, and SoulRun keeps only its newest runs. Formal content, what the skill is meant to produce and keep, is not cache: where it goes is decided by the skill and the user (for example the Creator writes its product, with `.evolution_snapshot/` and `.version_history/`, into the product folder). A location inside the skill's own package departs from the read-only default above, may fail on hosts that keep skill folders read-only (for example Codex's `.agents` and Claude Code's sandboxed `.claude/skills`) and may be lost when a plugin is updated.
 
 The reference discovery-script checker performs a bounded AST scan, not a proof of arbitrary Python behavior or a sandbox. Passing it does not authorize executing an untrusted script; manual review and the host trust gate remain necessary. Invalid encoding, non-file inputs and escaping discovery-script links fail inspection rather than crash or read outside the directory.
 
@@ -606,12 +609,14 @@ Field projection:
 | `SKILL.md` field | Projected from | Constraint |
 |------------------|----------------|------------|
 | `name` | Same-folder AISP `id` | Drop `_aisp`, convert underscores to hyphens, lowercase; it MAY differ from the `_aisp` folder name; never include `anthropic` or `claude` |
-| `description` | `aisp_contract.invocation` + summary | Include triggers and exclusions; max 1024 chars; injection-safe |
+| `description` | `aisp_contract.invocation` + summary | Lossy discovery summary; max 1024 chars; injection-safe |
 | `license` | `system.content.license` | Default `Apache-2.0` |
 | `metadata.generated_from_aisp` | Generator marker | Literal `"true"` for generated bridges |
 | `metadata.aisp_program` | Same-folder program path | MUST be `aisp.aisop.json`; no absolute path, URL, subdirectory, or `..` escape |
 | `metadata.protocol` | Protocol marker | MUST be `AISP V1.0.0` |
 | `metadata.bridge_mode` | Interface marker | MUST be `agent_skills_bridge` |
+
+The reference projection puts the summary before up to two triggers and two exclusions, then truncates to fit 1024 characters. Later conditions may be absent. The description is only a lossy discovery summary, not the full invocation contract; complete conditions and exclusion precedence remain in `aisp_contract.invocation` and still apply under §9.
 
 The canonical header uses `name`, `description`, `license` and `metadata`; it MUST NOT gain custom keys such as `compatibility`. JSON-quoted strings provide deterministic YAML escaping. The outer `license` derives from the business skill (`Apache-2.0` by default); the fixed bootstrap's own `license: Apache-2.0` covers that bootstrap only, not the business package.
 
@@ -630,7 +635,7 @@ The bootstrap's `system.content.params` contains exactly five non-empty launch s
 
 The number above is an illustration, not a permanent protocol minimum. The bounded reference syntax is `>=X.Y.Z` or `==X.Y.Z`, using stable three-component numeric versions. `source` is `latest_stable` for an automatically resolved lower bound, or `explicit` for a user/author constraint. A `latest_stable` policy MUST use `>=`. Compare numeric components, not strings. Prerelease/ambiguous executor reports stop; the tool reports unsupported stable release forms rather than silently choosing an older default.
 
-SoulRun is only the default adapter, **not a protocol dependency or required vendor**. On first generation, recognized migration without a policy, or explicit refresh of its default-managed policy, the reference generator queries official PyPI for the latest non-development, non-prerelease, non-yanked stable release and freezes the concrete lower bound. Returned metadata must identify the SoulRun project; that consistency check is not independent provenance verification. Runtime compatibility checks do not query latest or replace the frozen bound; a required installation may access the package source after user consent. A stored explicit constraint takes precedence, even on refresh; a new explicit CLI constraint takes precedence over both. Other executors use their own launch commands and an explicit version constraint; this tool does not substitute SoulRun or invent another vendor's release resolver.
+SoulRun is only the default adapter, **not a protocol dependency or required vendor**. On first generation or explicit refresh of its default-managed policy, the reference generator queries official PyPI for the latest non-development, non-prerelease, non-yanked stable release and freezes the concrete lower bound. Returned metadata must identify the SoulRun project; that consistency check is not independent provenance verification. Runtime compatibility checks do not query latest or replace the frozen bound; a required installation may access the package source after user consent. A stored explicit constraint takes precedence, even on refresh; a new explicit CLI constraint takes precedence over both. Other executors use their own launch commands and an explicit version constraint; this tool does not substitute SoulRun or invent another vendor's release resolver.
 
 There is one version-gated bootstrap and one core decision: whether the configured executor's installed package version satisfies the frozen requirement. A match runs directly; proven absence or mismatch asks for a matching installation, then rechecks the same condition. Probe errors stop. The rows below illustrate that one rule under different constraints, not different bootstrap types.
 
@@ -648,22 +653,24 @@ A missing probe result requires evidence that the configured executor package or
 
 The default invocation passes the skill directory, project `.soulrun_cache` directory, user message file, and `--host-tool "agent=<host capability>"`; it adds no session id (§4.2).
 
-The fixed bootstrap checks the frozen requirement, asks before installation/upgrade/downgrade when needed, rechecks after installation, then delegates to the executor. If installation is declined or unavailable, the skill does not run. The host MUST NOT bypass the executor to execute or continue the business program. Executor-mediated reads and user-requested review remain allowed. Before an executor exists, consent and version checks depend on the host; the bootstrap itself is not a hard runtime guarantee. See §4.2 for status distinctions and session boundaries.
+The fixed bootstrap checks the frozen requirement, asks before installation/upgrade/downgrade when needed, rechecks after installation, then delegates to the executor. If installation is declined or unavailable, the skill does not run. In any environment, sandboxed or not, the host MUST NOT run the skill with an executor that does not satisfy executor_version_policy, even if an older installed version still works. The host MUST NOT bypass the executor to execute or continue the business program. Executor-mediated reads and user-requested review remain allowed. Before an executor exists, consent and version checks depend on the host; the bootstrap itself is not a hard runtime guarantee. See §4.2 for status distinctions and session boundaries.
 
-### 20.2 Deterministic Generation and Explicit Migration
+### 20.2 Deterministic Generation
 
 Generated output has three inputs: the business program, executor configuration (five launch strings plus the frozen version policy), and the generator revision (identify the actual tool by content digest). Default resolution supplies the concrete policy before rendering; it is not an implicit runtime dependency. No new configuration file, template registry or executor registry is required.
 
 Registry manifest 1.1 adds `program_sha256` over the canonical complete two-message program to `package_sha256`. The schema still accepts legacy 1.0, which does not bind business-function edits. These are integrity domains, not archive-wide coverage: undeclared files and generated SKILL.md executor configuration are not automatically bound. Review or pin the actual interface separately; neither a matching hash nor its generated marker certifies commands, versions or trust. This artifact revision does not change AISP V1.0.0.
 
+For the existing reference hash format, canonical JSON means `json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")`, followed by SHA-256. Object keys are sorted; array order is retained. Unicode is not normalized, numeric rendering follows the reference Python serializer, and NaN/Infinity are rejected. Resource-file hashes use the original file bytes without BOM or line-ending normalization. This documents the existing algorithm, not RFC 8785/JCS conformance or a new hash format.
+
+`contract_sha256` hashes the contract object; `program_sha256` hashes the complete two-message array. `resources_sha256` hashes resource records in declaration order, each containing `id`, `path`, `scope` (default `skill`), `mode`, `kind`, `exists` and `sha256` (null for a missing file). `package_sha256` hashes only `manifest_version`, `protocol`, `skill_id`, `skill_version`, `contract_sha256`, `resources_sha256`, `resources` and, for 1.1, `program_sha256`; it does not add the host's resolved absolute package path or the manifest's top-level `skill_path`, `source` and `commit` fields. This is top-level manifest field selection, not recursive content filtering: same-named fields or path strings already present in the contract or program remain covered by the corresponding content hashes. The reference definition is `tools/aisp_hash.py`; reproductions need the same serialized input bytes, not merely semantically similar JSON.
+
 | Existing input | Generation/preview | Read-only check |
 |---|---|---|
 | Missing interface | Defaults, first generation | FAIL M7 |
-| Exactly recognized old projection or five-string callability bootstrap | Explicit migration; preserve launch strings and resolve the default policy or use an explicit constraint; `--write` reports migration | FAIL M7; checks never resolve or migrate |
-| Exactly recognized preceding version-policy bootstrap (executable-only absence classification) | Explicit migration; preserve commands and frozen policy without a query unless refresh or an explicit override is requested | FAIL M7; checks never resolve or migrate |
 | Valid current bootstrap | Preserve launch strings and policy; derive/update name, description and license | Compare all three derived fields plus exact fixed interface |
 | Damaged JSON, duplicate/missing/extra key, empty/non-string launch value or malformed policy | FAIL, no fallback | FAIL; file unchanged |
-| Unknown handwritten content or fixed-text drift | FAIL, no silent overwrite; restore fixed text explicitly | FAIL; file unchanged |
+| Any other existing interface (an older generated version or an edited file) | FAIL, file unchanged; back up, note the five launch strings and version policy, delete, regenerate, then restore non-default values | FAIL M7; file unchanged |
 
 To change executors, configure the five launch strings and explicit version policy, then check; normal regeneration preserves valid values without network access. For the default adapter, `--executor-version-requirement '>=1.0.0'` or `'==1.0.0'` updates a standard installation command consistently. `--refresh-executor-version` queries only for a default-managed policy and never overrides an explicit one. Missing default metadata, network failure or unsupported versions fail without a stored-version fallback. Batch generation resolves a default once and preflights every input before writing. `--check`/`--check-all` are offline/read-only and reject generation/refresh options. `--print` and `--write` share selection rules; preview never writes. Do not delete an existing configured interface to simulate a refresh, since that discards explicit choices. A later I/O failure reports completed, failed/possibly partial and not-attempted files, not a false all-or-none success.
 
@@ -822,7 +829,7 @@ Reference tooling map:
 5. Reading a resource not declared in `resources` / a `path` that escapes / an unconfirmed remote URL ✗.
 6. Treating `kind` as an enum / `mode` as open vocabulary ✗ (it is reversed: kind is open, mode is the enum).
 7. Treating `loading_mode` as a free strategy choice ✗ → AISP skills MUST use `loading_mode: "node"` for progressive disclosure.
-8. Omitting `execute_mode` everywhere and assuming that proves dispatch behavior ✗ → omission falls back to inline with a warning; real `agent` dispatch is proven only by runtime trace evidence.
+8. Omitting `execute_mode` everywhere and assuming that proves dispatch behavior ✗ → omission falls back to inline with a warning; real `agent` dispatch requires trustworthy runtime evidence. The reference trace checker checks supplied claims for shape and consistency; it does not independently authenticate events.
 9. Naming a declarative rule `assert` / duplicating Tier A in the contract (role / principles / failure / output written into the contract) ✗.
 10. Self-declared trust / `Claude` or `Anthropic` appearing in branding ✗.
 11. Treating generated `README.md` or a passing README check as proof of safety/trust ✗.

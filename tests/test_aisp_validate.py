@@ -1412,6 +1412,54 @@ class AISPValidateTests(unittest.TestCase):
                 jsonschema.validate(bad, manifest_schema)
 
 
+# Fixed old projection retained only to prove refusal, never migration.
+OLD_PROJECTION = r'''---
+name: "simple"
+description: "AISP-backed bridge for Minimal valid AISP skill for validator tests. Use when test a valid AISP skill. Do not use when no test requested."
+license: "Apache-2.0"
+metadata:
+  generated_from_aisp: "true"
+  aisp_program: "aisp.aisop.json"
+  protocol: "AISP V1.0.0"
+  bridge_mode: "native_sidecar"
+---
+
+# Simple AISP (AISP-backed Agent Skill)
+
+<!-- generated_from_aisp: true -->
+<!-- source: aisp.aisop.json -->
+<!-- generator: tools/aisp_skill_md.py -->
+
+This `SKILL.md` is a thin Agent Skills discovery bridge, not the source of truth. The executable source of truth is the same-folder `aisp.aisop.json` AISP program.
+
+Deleting this file does not change the native AISP skill. A conforming AISP/AISOP runtime should load `aisp.aisop.json`, read `user.content.aisp_contract`, and run `user.content.aisop.main` exactly as declared.
+
+## How to use
+
+1. Load `aisp.aisop.json` from this folder.
+2. Read `user.content.aisp_contract` before following any workflow.
+3. Follow `user.content.instruction`: `STRICTLY OBEY aisp_contract; its non_negotiable rules are inviolable; then RUN aisop.main`.
+4. Load declared resources only when the AISP graph reaches the node that needs them.
+5. Enforce every non-negotiable rule through the mechanism named by `enforced_by`.
+
+## Declared resources
+
+- No declared resources.
+
+## Non-negotiable boundaries
+
+- Follow RUN aisop.main. (`aisop.main`)
+
+## Runtime boundary
+
+Agent Skills platforms can use this bridge to discover and inspect the package. Hard guarantees such as `sys.assert`, `sys.io.confirm`, tool gating, dispatch behavior, and path confinement require a conforming AISP/AISOP runtime. A generic non-AISOP agent can only follow the contract on a best-effort basis.
+
+Passing `SKILL.md` generation or bridge validation proves only projection consistency and bridge shape. It does not prove external trust, safety, registry approval, or hard execution on a non-AISOP platform.
+
+Align Axiom 0: Human Sovereignty and Wellbeing. AISP - AI Skill Protocol V1.0.0. www.aisp.dev
+'''
+
+
 class ExecutorInterfaceTests(unittest.TestCase):
     def make_skill(self, root: Path, name: str = "executor_test_aisp") -> Path:
         skill = root / name
@@ -1550,7 +1598,7 @@ class ExecutorInterfaceTests(unittest.TestCase):
                 self.assertNotEqual(run_validator(skill)[0], 0)
                 self.assertNotEqual(run_bridge_validator(skill)[0], 0)
 
-    def test_s08_first_generation_and_recognized_legacy_need_explicit_write(self):
+    def test_s08_first_generation_requires_write_and_old_projection_is_refused(self):
         with tempfile.TemporaryDirectory() as tmp:
             skill = self.make_skill(Path(tmp))
             path = skill / "SKILL.md"
@@ -1563,15 +1611,20 @@ class ExecutorInterfaceTests(unittest.TestCase):
             self.assertEqual(write.returncode, 0)
             self.assertIn("first generation", write.stdout)
             self.assertEqual(path.read_text(encoding="utf-8"), preview.stdout)
-            path.write_text(interface_tool._render_legacy_skill_md(skill), encoding="utf-8")
-            legacy = path.read_bytes()
-            self.assertIn("LEGACY", run_skill_md_tool(skill, "--check").stdout)
-            preview = run_skill_md_tool(skill, "--print")
-            self.assertEqual(preview.returncode, 0)
-            self.assertEqual(legacy, path.read_bytes())
-            write = run_skill_md_tool(skill, "--write")
-            self.assertEqual(write.returncode, 0)
-            self.assertIn("legacy migration", write.stdout)
+            path.write_bytes(OLD_PROJECTION.encode("utf-8"))
+            before = path.read_bytes()
+            output = io.StringIO()
+            with patch.object(interface_tool.urllib.request, "urlopen", side_effect=AssertionError("refusal must be offline")) as network, redirect_stdout(output), redirect_stderr(output):
+                for action in ("--check", "--print", "--write"):
+                    self.assertEqual(interface_tool.main([str(skill), action]), 1)
+                    self.assertEqual(path.read_bytes(), before)
+                network.assert_not_called()
+            self.assertIn("CONFIG", output.getvalue())
+            self.assertIn("Back up the file", output.getvalue())
+            path.unlink()
+            with patch.object(interface_tool, "_latest_soulrun_requirement", return_value=">=1.0.1") as resolver, redirect_stdout(output):
+                self.assertEqual(interface_tool.main([str(skill), "--write"]), 0)
+                resolver.assert_called_once()
             self.assertEqual(run_skill_md_tool(skill, "--check").returncode, 0)
             path.write_text("Hand-maintained unknown instructions.\n", encoding="utf-8")
             unknown = path.read_bytes()
@@ -1613,10 +1666,9 @@ class ExecutorInterfaceTests(unittest.TestCase):
             root = Path(tmp)
             first = self.make_skill(root, "a_first_aisp")
             second = self.make_skill(root, "b_second_aisp")
-            (first / "SKILL.md").write_text(interface_tool._render_legacy_skill_md(first), encoding="utf-8")
             (second / "SKILL.md").write_text("unknown body", encoding="utf-8")
             before = [(skill / "SKILL.md").read_bytes() for skill in (first, second)]
-            self.assertNotEqual(run_skill_md_tool(root, "--write-all").returncode, 0)
+            self.assertNotEqual(run_skill_md_tool(root, "--write-all", "--executor-version-requirement", ">=1.0.1").returncode, 0)
             self.assertEqual(before, [(skill / "SKILL.md").read_bytes() for skill in (first, second)])
             (second / "SKILL.md").unlink()
             original_write = interface_tool.write_lf

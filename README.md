@@ -89,32 +89,17 @@ Default SoulRun bounds resolve to a concrete latest-stable snapshot at first gen
 
 ## Quick Start
 
-Prerequisite: Python 3.11 or newer. The reference tools use only the Python standard library at runtime; `jsonschema` is needed only for the schema-focused test coverage.
+Prerequisite for the reference tools: Python 3.11 or newer. Run the scripts
+directly from this checkout; they use only the standard library and do not
+require installing this repository.
 
-Run the reference scripts directly from this checkout; installing this repository
-is not required. For schema-focused tests, install the declared test dependency:
+For test dependencies, optional developer installation and packaging, see
+[Contributing](CONTRIBUTING.md#documentation-checks). The tools-only wheel does
+not include examples, schemas or an executor.
 
-```bash
-python -m pip install "jsonschema>=4"
-```
-
-Optional developer installation: `python -m pip install -e ".[dev]"`.
-The build configuration explicitly packages `tools`; offline editable metadata,
-wheel construction and a clean-venv installation of all eight console entry
-points have been checked. The wheel contains reference tools, not skill
-examples, schemas or a runtime. Source commands below remain usable without
-installing the repository. Neither installation nor a passing check confers
-publication approval.
-
-Packaging requires `setuptools>=84.1.0` as a build-only dependency; installed
-reference tools remain standard-library-only. Ignore rules do not sanitize
-tracked files, history or distribution archives. Review local outputs and built
-artifacts before sharing; see the [security policy](SECURITY.md#repository-hygiene).
-Wheel package-data settings and source-archive selection are separate:
-[`MANIFEST.in`](MANIFEST.in) excludes known private files and selected runtime,
-test, build and `.venv` residue from sdist even when an old source list exists.
-This is a bounded safeguard, not a complete
-secret detector; clean-source builds and archive review are still required.
+Ignore rules do not sanitize tracked files, history or archives. Review outputs
+before sharing; see [Repository Hygiene](SECURITY.md#repository-hygiene).
+Installation or a passing check does not authorize publication.
 
 ### 1. Inspect the package shape
 
@@ -275,7 +260,7 @@ The reference toolchain is a conformance gate, not a trust oracle.
 | SKILL.md generator/check | Existence, skill-derived header, fixed bootstrap and launch configuration and version-policy format (M7) | Executor certification, platform behavior, safety, trust or completed execution |
 | Bridge validator | Shared M7 plus frontmatter/path safety and native package validation | Runtime hard guarantees or completed execution |
 
-Missing, legacy or drifted `SKILL.md` is an M7 failure, with no opt-out. Core and bridge checks share a read-only checker; success proves unchanged bootstrap text and valid format, not executor certification, trust, safety or completed execution. See specification §20 for explicit migration, launch configuration and version policy and session limits.
+Missing, legacy or drifted `SKILL.md` is an M7 failure, with no opt-out. Core and bridge checks share a read-only checker; success proves unchanged bootstrap text and valid format, not executor certification, trust, safety or completed execution. See specification §20 for regeneration, launch configuration and version policy and session limits.
 
 `enforced_by: tools` remains conditional in static-only mode. `--strict-tools` requires the checker's event/provenance evidence criteria; a bare `tool_enforcement: "hard"` self-attestation is insufficient. Passing those criteria does not independently authenticate the artifact or establish actual hard enforcement. That guarantee depends on the runtime's real permission controls and trustworthy evidence provenance.
 
@@ -285,35 +270,12 @@ becoming warnings. README/SKILL.md writes reject symbolic-link outputs and
 replace individual files atomically. Batch preflight is not a multi-file
 transaction; later I/O failures may leave explicitly reported earlier writes.
 
-Documentation checks reject missing/out-of-root scan targets and derive anchors
-from prose, not fenced or inline-code examples. This is a bounded Markdown
-checker, not a full rendering engine. Trace checks reject explicit contract-read
-or visibility denials that conflict with affirmative events; consistency still
-does not authenticate the trace. Recorded dispatches for known inline nodes
-(including omitted-mode defaults) must also remain inline. Invalid link paths
-and unreadable anchor targets are reported as failures rather than tracebacks.
-
-Strict validation rejects non-program JSON values, including `null`; parse
-failure is not a successful empty report. Known optional text fields must be
-strings when present, `params` must be an object, and `tools` must be an array of
-non-blank strings; omission and an empty tools array remain allowed unless a
-separate binding requires an allow-list. This does not add required fields,
-certify license identifiers or prove prompt semantics. Only a missing license or
-a blank license string triggers the presence warning; a non-string license fails
-its type check instead. Index checks compare folder-derived
-routing metadata as well as ids/paths, retaining EC2 warnings for stale caches.
-Hash output refuses to overwrite its program/resource inputs (including aliases).
-Shared resource roots must remain inside the selected `aisp/` directory before
-files are read. Interface checks preserve `SKILL.md` link identity and reject
-symbolic links; recursive projections reject escaping skill folders. Discovery
-script scans are bounded AST checks, not a sandbox or a proof of harmless code.
-Resource-mode checks cover selected literal reads and run/bg calls, including
-ordinary quoted Python paths and harmless dot/separator aliases; dynamic commands
-and runtime mode enforcement remain outside that static check.
-Python option clusters are distinguished from file operands. Distinct scoped
-resources may share names. If every matching declaration forbids an operation,
-SE3 fails; otherwise unresolved literal usage warns without proving a selected
-scope or combining permissions.
+Detailed input, path, resource-mode and trace checks are documented in the
+[Validator Coverage Matrix](docs/reference/validator-coverage.md).
+[Registry & Runtime Artifacts](docs/reference/registry-runtime-artifacts.md)
+describes hash output safeguards and evidence formats. For warning handling and
+release requirements, see the [Release Evidence Matrix](docs/reference/release-evidence-matrix.md).
+These bounded checks are not a sandbox or proof of complete runtime enforcement.
 
 ## Examples
 
@@ -351,7 +313,7 @@ Review/trust both the tools and case commands and use an isolated host:
 | [Release Evidence Matrix](docs/reference/release-evidence-matrix.md) / [Chinese](docs/reference/release-evidence-matrix_CN.md) | Publication checklist, evidence levels, expected warnings, and trust boundaries |
 | [Validator Coverage](docs/reference/validator-coverage.md) | What the reference tools cover statically, from trace evidence, and from bridge checks |
 | [Generated Skill README](docs/reference/generated-readme.md) | Per-skill README generation, checking, and trust boundaries |
-| [Agent Skills Interface](docs/topics/interoperability-with-agent-skills.md) | Required SKILL.md, version conditions, explicit migration and host boundaries |
+| [Agent Skills Interface](docs/topics/interoperability-with-agent-skills.md) | Required SKILL.md, version conditions, regeneration and host boundaries |
 | [Registry & Runtime Artifacts](docs/reference/registry-runtime-artifacts.md) | Runtime trace, registry manifest, and tool capability schemas |
 | [Snapshot Release Workflow](docs/guides/snapshot-release-workflow.md) | Refreshing embedded creator snapshots and release metadata |
 | [aisp.proto](specification/aisp.proto) | Proto3 schemas for skill discovery and conformance services |

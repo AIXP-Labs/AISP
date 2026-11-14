@@ -16,7 +16,7 @@ For the runnable publication checklist and warning policy, see the [Release Evid
 | `tools/aisp_check_runtime_trace.py` | Runtime trace JSON for one skill | Published v1 trace shape plus selected R1/R3/R6/R7 and confirm-bypass checks | Generic schema-engine behavior, complete runtime conformance, independent event authenticity or provenance/signature authentication |
 | `tools/aisp_hash.py` | Contract/resource/package hash manifest | Recomputable local integrity records | Safety, trust, or registry approval |
 | `tools/aisp_readme.py` | Generated per-skill `README.md` projections | README derivation consistency with `aisp.aisop.json` | Skill safety or trust |
-| `tools/aisp_skill_md.py` | Required same-folder Agent Skills interface (M7) | Existence, skill-derived name/description/license, fixed bootstrap and launch configuration and version-policy format; explicit recognized-legacy migration only on write | Executor availability/certification, external trust, runtime behavior or completion |
+| `tools/aisp_skill_md.py` | Required same-folder Agent Skills interface (M7) | Existence, skill-derived name/description/license, fixed bootstrap and launch configuration and version-policy format | Executor availability/certification, external trust, runtime behavior or completion |
 | `tools/aisp_validate_agent_skill_bridge.py` | Required generated Agent Skills compatibility interfaces | Same shared read-only M7 check, existing frontmatter/injection/path checks and native AISP validation | Host runtime behavior, trust or executor certification |
 | `tools/check_doc_sync.py` | English/Chinese references and protocol layout | Commands, one ordered set of numbered protocol sections, intact M3 rule, snapshot metadata/hashes and ADR mirrors | General prose/translation quality, complete normative equivalence or upstream origin |
 | `tools/check_markdown_links.py` | Confined Markdown scan targets, prose links and heading anchors | Missing/out-of-root targets fail; ordinary backtick/tilde fences and inline examples do not create links/anchors | Complete CommonMark rendering, every container/HTML construct, MkDocs build-directory boundaries, external availability or semantic correctness |
@@ -52,7 +52,7 @@ coverage; statically invalid declarations still belong to core validation.
 | R2 Enforce `enforced_by` | Static binding only | No general assertion/semantic check | No | Separate R6/R7 and SE7 checks do not prove that every bound assertion was evaluated |
 | R3 Contract visible to model | No | Trace evidence; reject explicit denial/event conflicts | No | Requires runtime trace |
 | R4 Open-world AISOP compatibility | Documented boundary | No | No | Requires AISOP runtime behavior, not local package shape |
-| R5 Trust gate / prefer index | No | No | Registry/runtime/user policy concern; not verified by the reference trace checker |
+| R5 Trust gate / prefer index | No | No | No | Registry/runtime/user policy concern; not verified by the reference trace checker |
 | R6 Tool-enforcement declaration | Static warning/strict evidence consumption | Trace event evidence | No | Bare top-level hard attestation is not enough |
 | R7 `execute_mode` dispatch fidelity | Static declaration only | Trace evidence | No | Static validation checks missing/invalid declarations and warns when non-agent nodes exceed the 10-step review heuristic; real sub-agent dispatch requires runtime events |
 | SE1 Path confinement | Resolved resource and shared-root confinement | No | Bridge path confinement for `metadata.aisp_program`; SKILL.md link identity retained | Checked before reads; not a guarantee against hostile concurrent filesystem changes |
@@ -62,7 +62,7 @@ coverage; statically invalid declarations still belong to core validation.
 | SE5 Discovery script safety | Bounded AST scan of selected imports/calls | No | No | Confines and checks `aisp_list.py` without executing it; not arbitrary-code verification or a sandbox; trust gate/manual review remain necessary |
 | SE6 No self trust | Full static | No | Via native AISP validation | Mirrors M6 |
 | SE7 Confirm invariant | Static references only | Trace confirm-bypass evidence | No | Hard guarantee requires runtime behavior |
-| SE8 Read-only during execution | No | No | Requires separate runtime/file-change evidence; the reference trace checker has no SE8 enforcement check |
+| SE8 Read-only during execution | No | No | No | Requires separate runtime/file-change evidence; the reference trace checker has no SE8 enforcement check |
 | EC1 `aisp/` directory contract | Static directory check | No | No | Directory-level README/index/script |
 | EC2 Index/folder consistency | Static directory check | No | No | Compare ids/paths and name, summary, category, tags, when_to_use and risk_level; drift remains a warning because the folder is authoritative |
 | EC3 `_shared/` scope | Static directory/resource check | No | No | Shared resources are not skills |

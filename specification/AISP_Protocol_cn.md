@@ -151,9 +151,10 @@ Axiom 0: Human Sovereignty and Wellbeing
 |------|------|--------|
 | `AISP_Protocol.md`（及 `AISP_Protocol_cn.md` 翻译）| 技能包规范、结构、合同 schema、规则 | 对技能结构与规则**权威** |
 | `standards/AISP_Standard.*.aisop.json` | 形式化一致性规则定义（M / R / SE / EC 系列）| 对可机器核验的规则语义**权威** |
-| `aisp.proto` | 发现与一致性数据结构及服务 API | 对数据对象 schema 与服务契约**权威** |
+| `schemas/*.schema.json` | 对应原生 JSON 工件中覆盖的结构 | 定义这些 JSON 约束，不替代完整技能包或运行期校验 |
+| `aisp.proto` | 发现与一致性服务的传输对象及 API | 对这些服务的线格式类型与 API 签名**权威** |
 
-**冲突处理**：任一工件看似矛盾时，本 Markdown 规范对*规则与结构*作裁断；`aisp.proto` 对*数据形态与 API 签名*作裁断。翻译（如 `AISP_Protocol_cn.md`）始终非规范 — 分歧以英文为准。
+**冲突处理**：本 Markdown 规范对*协议规则与技能包结构*作裁断。每份 JSON Schema 描述其对应原生 JSON 工件中覆盖的约束；schema 通过不替代文件系统、跨文件或运行期检查。`aisp.proto` 只管其服务传输对象与 API 签名，不裁断原生 `aisp.aisop.json`、索引、trace 或 manifest 文件格式。Protobuf/ProtoJSON 的字段与枚举表示不能替代这些原生 JSON 格式。翻译（如 `AISP_Protocol_cn.md`）始终非规范 — 分歧以英文为准。
 
 > **本文档不是什么。** AISP 不重定义 AISOP 语言（图语法、`sys.*` 语义）— 那是 `aisop.dev`。AISP 不把生命周期委托给其它协议；生成 / 进化 / 分发是 AISP-native、工具无关。AISP 只定义*技能包*：如何把一个 AISOP 程序做成可发现、可触发、可治理、可分发的技能。
 
@@ -352,7 +353,9 @@ aisp/                          # 可见目录（非隐藏），AI/人/bash 可�
 
 技能合同是 **`user.content.aisp_contract`** — 一个**真 JSON object**，在 **user 消息**里，与 `instruction`/`user_input`/`aisop`/`functions` 并列；`instruction` 以强硬指令命令模型遵从它（§14）。（程序身份元数据 `id`/`name`/`version`/`license`/`tools`/`params` 仍在 `system.content`。）
 
-```json
+下方是含占位符、可选标记及候选值的字段记法，不是合法 JSON 或可运行合同。具体程序见 §22。
+
+```text
 {
   "profile": "aisp.skill.v1",
   "invocation": { "mode": "auto_or_manual", "when_to_use": ["string"], "when_not_to_use": ["string"] },
@@ -556,7 +559,7 @@ L3 资源：functions 节点按需 sys.io.read/sys.run（依 resources 清单 + 
 7. 文件夹有文件但未在 `resources` 声明 → validator SHOULD warn。
 8. `aisp_list.py` 是脚本，**跑它=执行代码**：MUST 最小、可审计、零依赖、只写 `aisp_list.json` 无其它副作用；不可信目录 SHOULD 优先读 `aisp_list.json`（不执行）、先过信任门再跑脚本。
 9. **Axiom 0**：所有技能继承"Human Sovereignty and Wellbeing"；`sys.io.confirm` 🔒 不可绕。
-10. **执行期只读**：AISP runtime SHOULD 在正常执行期把技能包（文件与资源）视为只读。修改只通过一个有意的进化/编辑步骤发生。
+10. **执行期只读**：AISP runtime SHOULD 在正常执行期把技能包（文件与资源）视为只读。修改只通过一个有意的进化/编辑步骤发生。技能运行时为自己用而写的东西是执行器的缓存，不是正式内容：默认放进宿主交给执行器的缓存目录里、这场运行自己的工作区，不进技能包；用户 MAY 改到别的位置，包括用执行器自己的缓存目录设置来改。删掉缓存目录，这些缓存就一起删除。默认执行器 SoulRun 的缓存目录是 `<工作目录>/.soulrun_cache`：SoulRun 为每场运行建一个编号目录，工作文件在 `_work/` 下，AISP 与 AIAP 程序共用这一个缓存目录，SoulRun 只保留最新的若干场运行。正式内容，即技能要产出并保留的东西，不是缓存：放在哪里由技能和用户决定（例如 Creator 把产品连同 `.evolution_snapshot/`、`.version_history/` 写进产品目录）。放在技能自己的包目录里，偏离上面的只读默认，在把技能目录设为只读的宿主上可能失败（例如 Codex 的 `.agents`、开了沙箱的 Claude Code 的 `.claude/skills`），插件升级时也可能丢失。
 
 参考发现脚本检查器执行的是有界 AST 扫描，不证明任意 Python 行为，也不提供沙箱。通过检查不授权执行不可信脚本；仍需人工审查和宿主信任门。编码无效、非文件输入和越界发现脚本链接会使检查失败，而非崩溃或读取目录外内容。
 
@@ -605,12 +608,14 @@ system.content.version                = "1.0.0"             ← 该技能自身�
 | `SKILL.md` 字段 | 来源 | 约束 |
 |-----------------|------|------|
 | `name` | 同目录 AISP `id` | 去 `_aisp`、下划线转连字符、小写；可不同于 `_aisp` 文件夹名；不得包含 `anthropic` 或 `claude` |
-| `description` | `aisp_contract.invocation` + summary | 含触发与排除条件；最多 1024 字符；防注入 |
+| `description` | `aisp_contract.invocation` + summary | 有损发现摘要；最多 1024 字符；防注入 |
 | `license` | `system.content.license` | 默认 `Apache-2.0` |
 | `metadata.generated_from_aisp` | 生成器标记 | 生成桥固定为 `"true"` |
 | `metadata.aisp_program` | 同目录程序路径 | MUST 为 `aisp.aisop.json`；禁止绝对路径、URL、子目录或 `..` 逃逸 |
 | `metadata.protocol` | 协议标记 | MUST 为 `AISP V1.0.0` |
 | `metadata.bridge_mode` | 接口标记 | MUST 为 `agent_skills_bridge` |
+
+参考投影先放摘要，再放最多两条触发和两条排除条件，最后截断至 1024 字符；后面的条件可能未被保留。description 只是有损发现摘要，不是完整触发合同；全部条件及排除优先级仍在 `aisp_contract.invocation` 中，并继续按 §9 生效。
 
 标准头部使用 `name`、`description`、`license`、`metadata`，MUST NOT 增加 `compatibility` 等自定义键；用 JSON 引号字符串确定性转义 YAML。外层 `license` 从业务技能派生，默认 Apache-2.0；固定引导程序自身的 Apache-2.0 只覆盖引导程序，不改写业务包许可。
 
@@ -629,7 +634,7 @@ system.content.version                = "1.0.0"             ← 该技能自身�
 
 上面版本号只是示例，不是协议永久最低版本。参考工具的有限语法是 `>=X.Y.Z` 或 `==X.Y.Z`，只接受稳定的三段数字版本。`source` 为 `latest_stable`（自动解析的下限）或 `explicit`（用户/作者明确约束）；前者 MUST 使用 `>=`。按数字分量比较，不按字符串比较。预发行或含糊的执行器报告应停止；默认解析遇到不支持的稳定版本形式会报错，不静默选择更旧版本。
 
-SoulRun 只是默认适配器，**不是协议依赖或强制厂商**。首次生成、可识别且尚无版本策略的旧版迁移，或显式刷新默认托管策略时，参考生成器查询官方 PyPI 的最新非开发、非预发布、未撤回稳定版，冻结为具体下限；返回的元数据必须标识 SoulRun 项目，这项一致性检查不是独立的来源信任核验。运行期兼容检查不查询 latest，也不替换冻结下限；确需安装时，获用户同意后的安装可以访问包源。已存的显式约束优先，即使刷新也保留；新的 CLI 显式约束优先于已有策略和默认值。其他执行器配置自己的命令与显式版本约束；此工具不回退到 SoulRun，也不凭空为其他厂商构造版本解析器。
+SoulRun 只是默认适配器，**不是协议依赖或强制厂商**。首次生成或显式刷新默认托管策略时，参考生成器查询官方 PyPI 的最新非开发、非预发布、未撤回稳定版，冻结为具体下限；返回的元数据必须标识 SoulRun 项目，这项一致性检查不是独立的来源信任核验。运行期兼容检查不查询 latest，也不替换冻结下限；确需安装时，获用户同意后的安装可以访问包源。已存的显式约束优先，即使刷新也保留；新的 CLI 显式约束优先于已有策略和默认值。其他执行器配置自己的命令与显式版本约束；此工具不回退到 SoulRun，也不凭空为其他厂商构造版本解析器。
 
 只有一条版本条件引导、一个核心判断：所配执行器已安装的包版本是否满足冻结约束。满足就直接执行；已证实缺失或不满足才询问安装，安装后再核对同一条件；探测出错就停止。下表是同一规则在不同约束下的示例，不是多种引导类型。
 
@@ -647,22 +652,24 @@ SoulRun 只是默认适配器，**不是协议依赖或强制厂商**。首次�
 
 默认调用传入技能目录、项目 `.soulrun_cache` 目录、用户消息文件、`--host-tool "agent=<宿主能力>"`，不加 session id（§4.2）。
 
-固定引导程序检查冻结约束，需要安装/升级/降级时先问用户，安装后复查，再交给执行器；拒绝安装或执行器不可用时，技能不运行。宿主 MUST NOT 绕过执行器自行执行或续跑业务程序；经执行器读取和用户要求的代码审查仍允许。执行器尚不存在时，确认和版本检查依赖宿主，引导程序本身不是运行期硬保证。状态分类和会话边界见 §4.2。
+固定引导程序检查冻结约束，需要安装/升级/降级时先问用户，安装后复查，再交给执行器；拒绝安装或执行器不可用时，技能不运行。无论是沙箱还是任何环境，执行器不满足 `executor_version_policy` 时，宿主 MUST NOT 用它执行技能；旧版即使还能用，也不得使用。宿主 MUST NOT 绕过执行器自行执行或续跑业务程序；经执行器读取和用户要求的代码审查仍允许。执行器尚不存在时，确认和版本检查依赖宿主，引导程序本身不是运行期硬保证。状态分类和会话边界见 §4.2。
 
-### 20.2 确定性生成与明确迁移
+### 20.2 确定性生成
 
 生成有三项输入：业务程序、执行器配置（五个命令字符串和冻结版本策略）、生成器修订（以实际工具内容摘要标识）。默认解析在排版前给出具体策略，不是隐含的运行期联网依赖。不新增配置文件、模板注册中心或执行器注册中心。
 
 Registry manifest 1.1 新增完整双消息程序规范化哈希 `program_sha256`，并纳入 `package_sha256`。schema 仍接受旧 1.0，但旧版不绑定业务函数修改。这些是完整性覆盖域，不是整个归档覆盖：未声明文件及生成式 SKILL.md 的执行器配置不会自动绑定。须另行审查或固定实际接口；哈希一致及生成标记均不认证命令、版本或信任。此产物版本调整不改变 AISP V1.0.0。
 
+现有参考哈希格式中的规范化 JSON 指 `json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")`，随后计算 SHA-256。对象键排序，数组顺序保留；不归一 Unicode，数字表示沿用参考 Python 序列化器，拒绝 NaN/Infinity。资源文件直接按原始字节计算哈希，不归一 BOM 或换行。这是在记录现有算法，不声明符合 RFC 8785/JCS，也不引入新哈希格式。
+
+`contract_sha256` 的输入是合同对象，`program_sha256` 的输入是完整双消息数组。`resources_sha256` 按声明顺序散列资源记录，每条含 `id`、`path`、`scope`（默认 `skill`）、`mode`、`kind`、`exists` 和 `sha256`（文件缺失时为 null）。`package_sha256` 仅散列 `manifest_version`、`protocol`、`skill_id`、`skill_version`、`contract_sha256`、`resources_sha256`、`resources`，1.1 另含 `program_sha256`；不额外加入宿主解析出的技能包绝对路径，也不纳入 manifest 顶层的 `skill_path`、`source` 和 `commit` 字段。这里是 manifest 顶层字段选择，不是递归内容过滤：合同或程序内部已有的同名字段、路径字符串仍由对应内容摘要覆盖。参考定义在 `tools/aisp_hash.py`；复现须得到相同的序列化输入字节，仅有语义相近的 JSON 不够。
+
 | 已有输入 | 生成/预览 | 只读检查 |
 |---|---|---|
 | 缺少接口 | 首次生成，采用默认值 | FAIL M7 |
-| 精确识别的旧投影或五字符串可调用性引导 | 明确迁移，保留命令并解析默认策略或采用显式约束；`--write` 报告迁移 | FAIL M7，检查不解析默认值或迁移 |
-| 精确识别的上一版版本策略引导（仅按可执行文件判断缺失） | 明确迁移，保留命令和冻结策略；除请求刷新或显式覆盖外，不查询版本 | FAIL M7，检查不解析默认值或迁移 |
 | 合法新版引导程序 | 保留命令及策略；派生/更新 name、description、license | 核对三项派生头部及全部固定接口 |
 | JSON 损坏、重复/缺少/额外键、命令字符串为空/类型错误或策略形状错误 | FAIL，不回退 | FAIL，文件不变 |
-| 未知手写内容或固定正文漂移 | FAIL，不静默覆盖；须显式恢复固定正文 | FAIL，文件不变 |
+| 其他任何已有接口（旧版生成物或被改过的文件） | FAIL，文件不动；先备份，记下五个命令字符串和版本策略，删除后重新生成，再填回非默认值 | FAIL M7，文件不动 |
 
 更换执行器配置五个命令字符串和显式版本策略，再检查；普通重生成离线保留合法值。默认适配器可用 `--executor-version-requirement '>=1.0.0'` 或 `'==1.0.0'` 一致更新标准安装命令。`--refresh-executor-version` 只查询默认托管策略，绝不覆盖显式约束。元数据缺失、联网失败或版本不支持均失败，不回退到已存版本。批量生成每批只解析一次默认值，写入前预检所有输入。`--check`/`--check-all` 离线只读，禁止与生成/刷新选项组合。预览与写入选值一致，预览不写文件；不得通过删除已配置接口来模拟刷新、丢弃用户显式选择。实际 I/O 失败分别报告已完成、失败/可能部分写入、未尝试文件，不假称整体原子成功。
 
@@ -821,7 +828,7 @@ M7 通过只证明引导程序未改、格式正确，包含技能派生头部�
 5. 资源不在 `resources` 声明就直接读 / `path` 逃逸 / 远程 URL 不确认 ✗。
 6. `kind` 当枚举 / `mode` 当开放词 ✗（反了：kind 开放、mode 枚举）。
 7. 把 `loading_mode` 当成自由策略选择 ✗ → AISP 技能 MUST 使用 `loading_mode: "node"` 做渐进披露。
-8. 到处省略 `execute_mode` 并误以为这能证明派发行为 ✗ → 省略只会回退 inline 且产生 warning；真实 `agent` 派发只能由 runtime trace evidence 证明。
+8. 到处省略 `execute_mode` 并误以为这能证明派发行为 ✗ → 省略只会回退 inline 且产生 warning；真实 `agent` 派发需要可信运行证据。参考 trace 检查器只核对提交声明的形状与一致性，不独立认证事件真实性。
 9. 声明式规则命名 `assert` / 合同重复 Tier A（角色/原则/失败/输出写进合同）✗。
 10. self-declared trust / 品牌出现 Claude/Anthropic ✗。
 11. 把生成的 `README.md` 或 README 检查通过当成安全/可信证明 ✗。

@@ -25,7 +25,7 @@ The earlier core-optional discovery projection is replaced by mandatory M7 and a
 ## Consequences
 
 - Standard discovery and executor handoff are present in all conformant packages; missing, old or drifted interfaces fail M7, with EC7 retained only as a legacy mapping.
-- Existing generated interfaces need explicit migration. Damaged/unknown files are rejected rather than silently overwritten or reset to defaults.
+- Existing generated interfaces from older revisions must be regenerated. Damaged/unknown files are rejected rather than silently overwritten or reset to defaults.
 - Five launch strings and one frozen version policy remain configurable inside the existing interface. One version condition determines direct execution or a consented, rechecked installation; no registry, extra config or template framework is introduced.
 - A successful static check does not establish runtime behavior, supported host operation or completed execution.
 - The default scope supports one active session, including waiting gates; concurrent conversations require host isolation or separate project/runtime directories.
@@ -35,7 +35,7 @@ The earlier core-optional discovery projection is replaced by mandatory M7 and a
 
 - ADR-001: AISP packages programs built on AISOP.
 - ADR-004: hard guarantees rely on real `enforced_by -> sys.*` mechanisms, not prose.
-- Specification §20: canonical rendering, launch strings, frozen version policy and controlled migration.
+- Specification §20: canonical rendering, launch strings, frozen version policy and regeneration.
 
 ---
 

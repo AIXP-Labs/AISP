@@ -74,7 +74,7 @@
           },
           "SE8": {
             "name": "Read-Only During Execution",
-            "check": "Skill files and resources are read-only during normal execution. Modifications happen only through a deliberate evolution/edit step.",
+            "check": "Skill files and resources are read-only during normal execution. Modifications happen only through a deliberate evolution/edit step. What a skill writes for its own use while running is executor cache: by default the executor's per-run area, not the package; the user MAY choose another location. Where formal content goes is decided by the skill and the user.",
             "severity": "WARNING",
             "how_to_verify": "Assert the runtime does not write to skill files or resources during normal execution. Modification of a skill package is permitted only through a deliberate evolution/edit step."
           }

@@ -123,9 +123,9 @@ With an Agent Skills host:
 
 | Hash | Value | Meaning |
 | --- | --- | --- |
-| `program_sha256` | `001699f28b65a5ba886964eb1124e58eec63f64aca70e8a819ef3fc6fae8d216` | Canonical JSON hash of the complete two-message business program |
+| `program_sha256` | `fe723e3b245f6e4f4b636f79f99e89287b4c704f91cd622c8d4ca458095ad627` | Canonical JSON hash of the complete two-message business program |
 | `contract_sha256` | `1eeca125f7613a84e9d40ec345452508a265622ee222862b0b38632a9ad7860c` | Recomputable hash of `user.content.aisp_contract` |
-| `resources_sha256` | `3cf334ac79362a9e050ea65ee83d4b400d599e28df318daf4992b1519102919b` | Recomputable hash of declared resource records |
+| `resources_sha256` | `f69cb7d7500a3ebaf8e404576e17a9fd2faaeda051a2825f263457cf5400b99a` | Recomputable hash of declared resource records |
 
 `package_sha256` belongs in an external registry/provenance artifact. Manifest 1.1 binds the complete program plus contract and declared-resource evidence, not every archive file or the SKILL.md executor configuration. Legacy 1.0 hashes did not bind the program body. Recompute with `tools/aisp_hash.py` at publication time.
 

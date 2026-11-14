@@ -5,7 +5,7 @@ This directory is a read-only offline reference snapshot of the complete
 `https://github.com/AIXP-Labs/AISP/tree/main/specification`.
 
 - source commit: `uncommitted-working-tree`
-- snapshot date: `2026-11-13`
+- snapshot date: `2026-11-14`
 - snapshot state: `working_tree_revision`
 - snapshot note: local internal protocol candidate copied from the working tree;
   no Git or network verification. Manifest hashes prove local integrity only,

@@ -98,10 +98,12 @@ Core fields:
 | `contract_sha256` | Canonical hash of `user.content.aisp_contract` |
 | `program_sha256` | Canonical hash of the complete two-message program; required in manifest 1.1 |
 | `resources_sha256` | Canonical hash of declared resource records |
-| `package_sha256` | Canonical hash of package content evidence; excludes host-local paths and provenance fields such as `source` / `commit` |
+| `package_sha256` | Canonical hash of package content evidence; excludes top-level manifest `skill_path`, `source` and `commit` |
 | `resources[]` | Per-resource existence and content hash records |
 
 `package_sha256` is content evidence, not a trust proof. It is intentionally stable when the same skill folder is copied to another local directory or when registry-side `source` / `commit` metadata changes. Trust still comes from external provenance, registry policy, signatures, or human approval.
+
+Host-resolved absolute package paths are not added to these hash inputs. The exclusions refer only to top-level manifest metadata: keys or path strings already present inside the contract or program remain hashed as content. Do not recursively filter such content when reproducing the hashes.
 
 Manifest 1.1 hashes the identity, contract/resource evidence and `program_sha256`
 into `package_sha256`; 1.0 omitted the program body and therefore cannot detect

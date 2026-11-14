@@ -21,7 +21,7 @@
 ### 报告 Issue
 
 - 使用 [GitHub Issues](https://github.com/AIXP-Labs/AISP/issues) 报告 bug、提议功能或建议规范变更
-- 规范变更请使用 `spec-change` issue 模板
+- 规范变更请提交说明提议的 Issue，由维护者添加 `spec-change` 标签
 - 提供清晰描述，尽可能附带示例
 
 ### 讨论驱动开发

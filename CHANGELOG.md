@@ -6,6 +6,51 @@ The format follows [Keep a Changelog](https://keepachangelog.com/), and the prot
 
 ---
 
+## V1.0.0 — 2026-11-14 revision
+
+### Changes
+
+- Tighten the fixed executor bootstrap: when execution is unavailable, do not provide substitute results, analysis or advice, even partly. Write the user-message file inside the working folder. After failed installation or upgrade, recheck the configured executor and report truthfully whether the old installation is still available; a successful version probe alone is not a full health check.
+- Accept only the current generated SKILL.md interface. Remove the three old-interface recognition/migration paths and stop emitting AISP_E_M7_SKILL_MD_LEGACY; old or edited interfaces fail without changes to their files. Valid current launch strings and frozen version policies remain configurable and preserved.
+- Clarify specification §17 and security SE8: runtime self-use files are executor cache, not formal content; by default use the executor's per-run cache area rather than the skill package, with a user-selected location allowed. Skill and user decide formal output locations. Numbered run folders, _work/, shared AISP/AIAP cache and retention describe the default SoulRun adapter only.
+- Require in specification §20 and the core standard that an executor not satisfying executor_version_policy MUST NOT execute the skill in any environment, sandboxed or not, even if an older installed version still works. SoulRun remains a replaceable default, not a protocol dependency.
+- Clarify specification boundaries: §1.1 limits `aisp.proto` to its service transport objects and API signatures, while native JSON formats follow the Markdown specification and applicable JSON Schemas; §8 marks its field notation as non-JSON; §20 describes the SKILL.md description as a lossy discovery summary; §20.2 documents the existing reference hash serialization and the top-level manifest fields left out of package_sha256; §25 states that the reference trace checker checks claim shape and consistency, not event authenticity. No rule IDs, schemas, hash algorithm or proto definitions change. Contributor guidance now uses proposal issues with maintainer-applied labels; snapshot-release guidance now prohibits re-initializing the repository or force-pushing rewritten history.
+- Update the native Creator's prescribed program sentence, template, embedded references and generated README. Content is updated while its package version remains 1.0.1; protocol/tools remain 1.0.0. No runtime, engine, schema or external-repository copy is updated by this revision.
+
+### Migration
+
+1. Any SKILL.md not matching the current generated interface fails checks and is not migrated by --print or --write; the existing file stays unchanged. Back it up and record all five launch strings and executor_version_policy before deleting it, especially when another executor is configured.
+2. Delete the backed-up interface deliberately, regenerate it with the current tool, restore non-default launch strings and version policy, and recheck. Use an explicit --executor-version-requirement when preserving an author-specified constraint; do not silently replace it with a newly resolved default. First generation of the default adapter resolves and freezes the latest stable SoulRun release, while checks and ordinary valid regeneration stay offline.
+3. Complete intended program/resource/snapshot changes and manifests before regenerating README.md, then run the interface, README, core, bridge and applicable index checks. Preserve failure records and review warnings; matching generated files, manifests or trace fixtures do not provide independent trust or runtime certification.
+
+### Known Limitations
+
+- The former lack of a user-message-file location rule is addressed by the bootstrap's working-folder constraint. The boundary is the task's chosen working folder: an isolated project under system Temp is allowed, but writing elsewhere outside that working folder is not. This instruction is not a new runtime path-enforcement check.
+- The interface name intentionally differs from the _aisp directory name: Agent Skills expects a matching name, while AISP requires the directory suffix and derives a hyphenated name without underscores. The tested Claude Code and Codex hosts loaded this layout; that does not establish support on every host.
+- In sandboxed hosts, an executor upgrade can be denied and pip can leave the previous installation partly uninstalled or unusable, as observed with Windows Codex. Upgrade outside the sandbox when needed. The bootstrap rechecks and reports the old version's availability, but never executes this skill with an executor outside the frozen constraint, in any environment; it does not repair a damaged installation.
+- Format, version reports, generated markers, hashes and trace fixtures are not executor certification, safety, external trust or proof of completed execution. Hosts must not bypass the executor; installation consent remains a host responsibility before an executor exists. The default runtime scope supports one active session, including waits.
+- In the tested Windows Codex sandbox, access to a newly created SoulRun runtime directory remains an executor/environment limitation. The documented 1.0.x workaround pre-creates an empty run directory. A successful run using that workaround does not establish that the default directory path works without it.
+- Existing real-host evidence is scoped to the tested yijing package, hosts, versions and scenarios. Delegated installation consent is not user-per-gate participation, and a stand-in executor tests routing rather than actual skill execution. Other examples, sub-agent dispatch and untested scenarios are not certified by those runs. The yijing example's partial reference data and brief interpretation guide do not establish complete or authoritative source coverage.
+- Copies of these examples and reference tools in other AIXP repositories are updated separately; until updated they may fail the current M7 check.
+- Local validation, archive filtering and CI configuration are bounded checks. No hosted Actions success, complete runtime conformance, or cross-repository release qualification is implied.
+
+### Reference Tool Content Digests
+
+These SHA-256 values identify the reference tools in this revision, not a release signature or external trust proof. Only tools/aisp_skill_md.py changed among these tools; the older revision's table below is preserved unchanged.
+
+| Tool | SHA-256 |
+|---|---|
+| `tools/aisp_skill_md.py` | `defc7da507bf607ae0f9ebc0fb608602fc42a2458b18f2555292ec6a94f724ff` |
+| `tools/aisp_validate.py` | `4b783569076ed9c6f8c299fe4b1a2a7dd8d849069eb0b25c493364c0138a7eb8` |
+| `tools/aisp_validate_agent_skill_bridge.py` | `c590b57bce975741fbf740889594feba53d34f95122dd301f91751a4dfa246d0` |
+| `tools/aisp_readme.py` | `78d11506c7c2f4c216ab16e1c7e09e6472ddf760a664c11e93e79dfb56b63254` |
+| `tools/aisp_hash.py` | `ba7f81e74a4801d765e31bdda694c8a45044d4a64ae047e4a56e5e2c99c17a2d` |
+| `tools/aisp_check_runtime_trace.py` | `bc345527d264136fcbb3764e584e296116b1601cec044321a13f7f9fc2b2ad01` |
+| `tools/check_doc_sync.py` | `640ff82017fea3f52dc7e377718edb7cf096e35e45453b861bfb104d06118a69` |
+| `tools/check_markdown_links.py` | `353c3b214c4cb3c2b703b9b4822867621a42dd035a3924bca0f65036a6aa4aee` |
+
+---
+
 ## V1.0.0 — 2026-11-13 revision
 
 ### Changes

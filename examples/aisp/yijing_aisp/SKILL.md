@@ -116,13 +116,16 @@ metadata:
           "step2": "Do what printed says, to the end of this turn",
           "execute_mode": "inline",
           "constraints": [
-            "Only run after a verified matching installed version or a successful installation and matching recheck. Do not suppress the skill's own business confirmation gates. A business run failure is not permission to reinstall or upgrade."
+            "Only run after a verified matching installed version or a successful installation and matching recheck. Do not suppress the skill's own business confirmation gates. A business run failure is not permission to reinstall or upgrade.",
+            "Write the file holding the user message inside your working folder, never in a system temporary folder or anywhere else outside it."
           ]
         },
         "unavailable": {
           "step1": "sys.io.notify('This request was not run because the required executor is missing, unusable, unverified or incompatible, or installation was declined or failed. Explain the actual reason and the declared version requirement; do not claim execution. The configured installation command is {executor_install}.')",
           "constraints": [
-            "Do not execute aisp.aisop.json or carry out this skill's steps yourself."
+            "Do not execute aisp.aisop.json or carry out this skill's steps yourself.",
+            "Do not answer the request yourself, not even partly: give no substitute result, analysis or advice. You may only offer other help and wait for the user to choose.",
+            "After a failed installation or upgrade, run {executor_version} again and tell the user truthfully whether a previously installed executor still works; even if it does, never run this skill with an executor that does not satisfy executor_version_policy, in any environment."
           ],
           "execute_mode": "inline"
         },

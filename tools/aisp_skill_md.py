@@ -39,8 +39,7 @@ RELEASE_RE = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 REQUIREMENT_RE = re.compile(r"^(>=|==)((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))$")
 PYPI_URL = "https://pypi.org/pypi/soulrun/json"
 
-# Preserve the exact former bootstrap solely for explicit migration recognition.
-_CALLABILITY_BOOTSTRAP_JSON = r'''[
+BOOTSTRAP_JSON = r'''[
   {
     "role": "system",
     "content": {
@@ -66,8 +65,12 @@ _CALLABILITY_BOOTSTRAP_JSON = r'''[
         "profile": "aisp.skill.v1",
         "invocation": {
           "mode": "auto_or_manual",
-          "when_to_use": ["the request matches the Use when part of this skill's description"],
-          "when_not_to_use": ["the request matches the Do not use when part of this skill's description"]
+          "when_to_use": [
+            "the request matches the Use when part of this skill's description"
+          ],
+          "when_not_to_use": [
+            "the request matches the Do not use when part of this skill's description"
+          ]
         },
         "non_negotiable": [
           {
@@ -78,105 +81,93 @@ _CALLABILITY_BOOTSTRAP_JSON = r'''[
             "rule": "Run this skill only through the executor; never execute or continue aisp.aisop.json yourself. Reading it through the executor's commands, or reviewing it when the user asks, is not running it.",
             "enforced_by": "aisop.main"
           },
-          {"rule": "Install the executor only after the user agrees.", "enforced_by": "ask.step1:sys.io.confirm"}
+          {
+            "rule": "Install, upgrade or downgrade the executor only after the user agrees.",
+            "enforced_by": "ask.step1:sys.io.confirm"
+          }
         ],
         "risk_level": "medium"
       },
       "aisop": {
-        "main": "graph TD\n    check[Check that the executor is installed] --> run[Run this skill with the executor]\n    check -.-> ask{Ask the user to install the executor}\n    ask -->|install| install[Install the executor]\n    ask -->|do_not_install| unavailable[Tell the user this skill cannot run without the executor]\n    install --> run\n    install -.-> unavailable\n    run --> end_node((End))\n    unavailable --> end_node"
+        "main": "graph TD\n    check{Check the executor package version} -->|satisfied| run[Run this skill with the executor]\n    check -->|mismatch| prepare_install[Verify the requested installation target]\n    check -.-> probe_error{Classify the failed probe}\n    probe_error -->|missing| prepare_install\n    probe_error -->|unusable| unavailable[Tell the user this request cannot run]\n    prepare_install --> ask{Ask the user to install the required executor}\n    ask -->|install| install[Install and verify the executor]\n    ask -->|do_not_install| unavailable\n    install --> run\n    install -.-> unavailable\n    run --> end_node((End))\n    unavailable --> end_node"
       },
       "functions": {
         "check": {
-          "step1": "sys.run('{executor_version}') -> installed",
-          "on_error": {"command_error": "ask"},
+          "step1": "sys.run('{executor_version}') -> version_probe",
+          "step2": "sys.assert('The probe unambiguously identifies the configured executor package version as three non-negative numeric components; do not use the protocol or bundled engine version, and never treat unknown output as compatible')",
+          "step3": "Compare the numeric version components with executor_version_policy.requirement. Return satisfied for >= when installed is at least the bound, or for == only when equal; otherwise return mismatch. A satisfied version runs directly without asking to install or upgrade. Do not query a package index during this check.",
+          "on_error": {
+            "command_error": "probe_error",
+            "assertion_error": "unavailable",
+            "command_timeout": "unavailable",
+            "default": "unavailable"
+          },
           "execute_mode": "inline"
         },
         "ask": {
-          "step1": "sys.io.confirm('This AISP skill runs only with an executor, and {executor} is not installed. Install the latest version now ({executor_install})?', options=['install', 'do_not_install']) -> choice",
+          "step1": "sys.io.confirm('This skill requires {executor} with the frozen executor_version_policy. State the installed version or absence, required constraint, actual target version policy, environment and any upgrade/downgrade. Install it using {executor_install}?', options=['install', 'do_not_install']) -> choice",
           "step2": "Return choice as the branch label",
-          "constraints": ["Wait for the user's answer, even if that ends this turn; never choose for the user."],
+          "constraints": [
+            "Wait for the user's answer, even if that ends this turn; never choose for the user."
+          ],
           "execute_mode": "inline"
         },
         "install": {
           "step1": "sys.run('{executor_install}') -> install_log",
           "step2": "sys.run('{executor_version}') -> installed",
-          "on_error": {"command_error": "unavailable"},
-          "execute_mode": "inline"
+          "on_error": {
+            "command_error": "unavailable",
+            "command_timeout": "unavailable",
+            "assertion_error": "unavailable",
+            "default": "unavailable"
+          },
+          "execute_mode": "inline",
+          "step3": "sys.assert('After installation, reparse the configured executor package version and verify executor_version_policy.requirement using numeric components; == requires equality, >= requires at least the bound. Unparseable, failed or mismatching rechecks stop without execution, retries or fallback')"
         },
         "run": {
           "step1": "sys.run('{executor_command}') -> printed",
           "step2": "Do what printed says, to the end of this turn",
-          "execute_mode": "inline"
+          "execute_mode": "inline",
+          "constraints": [
+            "Only run after a verified matching installed version or a successful installation and matching recheck. Do not suppress the skill's own business confirmation gates. A business run failure is not permission to reinstall or upgrade.",
+            "Write the file holding the user message inside your working folder, never in a system temporary folder or anywhere else outside it."
+          ]
         },
         "unavailable": {
-          "step1": "sys.io.notify('This AISP skill cannot run without an executor, so this request was not run. To run it, install {executor} ({executor_install}) and ask again.')",
-          "constraints": ["Do not execute aisp.aisop.json or carry out this skill's steps yourself."],
+          "step1": "sys.io.notify('This request was not run because the required executor is missing, unusable, unverified or incompatible, or installation was declined or failed. Explain the actual reason and the declared version requirement; do not claim execution. The configured installation command is {executor_install}.')",
+          "constraints": [
+            "Do not execute aisp.aisop.json or carry out this skill's steps yourself.",
+            "Do not answer the request yourself, not even partly: give no substitute result, analysis or advice. You may only offer other help and wait for the user to choose.",
+            "After a failed installation or upgrade, run {executor_version} again and tell the user truthfully whether a previously installed executor still works; even if it does, never run this skill with an executor that does not satisfy executor_version_policy, in any environment."
+          ],
           "execute_mode": "inline"
         },
-        "end_node": {"step1": "End this turn", "execute_mode": "inline"}
+        "end_node": {
+          "step1": "End this turn",
+          "execute_mode": "inline"
+        },
+        "probe_error": {
+          "step1": "Return missing only when the probe proves the configured executor package or entry point is not installed in the current environment, including a proven missing executor module behind an available launcher. A missing unrelated dependency/helper, invalid command, permission denial, timeout, other started-but-failed command or ambiguous failure returns unusable; do not reinstall to conceal it.",
+          "execute_mode": "inline"
+        },
+        "prepare_install": {
+          "step1": "For >=, the installation target is the latest stable executor release satisfying the frozen lower bound. For ==, the target is exactly the declared release, even if the installed version is newer. Identify the current version, target, environment and any downgrade; use the configured executor_install command, not an invented alternative.",
+          "step2": "sys.assert('The configured installation command targets the requested release: latest stable satisfying >=, or exactly the version after ==; an unpinned latest command is not an exact-version installation. If its target cannot be established, stop instead of executing or silently rewriting it')",
+          "on_error": {
+            "assertion_error": "unavailable",
+            "default": "unavailable"
+          },
+          "execute_mode": "inline"
+        }
       }
     }
   }
 ]'''
 
-
-def _versioned_bootstrap(*, legacy_probe: bool = False) -> str:
-    program = json.loads(_CALLABILITY_BOOTSTRAP_JSON)
-    user = program[1]["content"]
-    user["aisp_contract"]["non_negotiable"][2]["rule"] = (
-        "Install, upgrade or downgrade the executor only after the user agrees."
-    )
-    user["aisop"]["main"] = (
-        "graph TD\n"
-        "    check{Check the executor package version} -->|satisfied| run[Run this skill with the executor]\n"
-        "    check -->|mismatch| prepare_install[Verify the requested installation target]\n"
-        "    check -.-> probe_error{Classify the failed probe}\n"
-        "    probe_error -->|missing| prepare_install\n"
-        "    probe_error -->|unusable| unavailable[Tell the user this request cannot run]\n"
-        "    prepare_install --> ask{Ask the user to install the required executor}\n"
-        "    ask -->|install| install[Install and verify the executor]\n"
-        "    ask -->|do_not_install| unavailable\n"
-        "    install --> run\n"
-        "    install -.-> unavailable\n"
-        "    run --> end_node((End))\n"
-        "    unavailable --> end_node"
-    )
-    functions = user["functions"]
-    functions["check"] = {
-        "step1": "sys.run('{executor_version}') -> version_probe",
-        "step2": "sys.assert('The probe unambiguously identifies the configured executor package version as three non-negative numeric components; do not use the protocol or bundled engine version, and never treat unknown output as compatible')",
-        "step3": "Compare the numeric version components with executor_version_policy.requirement. Return satisfied for >= when installed is at least the bound, or for == only when equal; otherwise return mismatch. A satisfied version runs directly without asking to install or upgrade. Do not query a package index during this check.",
-        "on_error": {"command_error": "probe_error", "assertion_error": "unavailable", "command_timeout": "unavailable", "default": "unavailable"},
-        "execute_mode": "inline",
-    }
-    functions["probe_error"] = {
-        "step1": (
-            "Return missing only when the probe proves the configured executor executable is not installed in the current environment. A started-but-failed command, permission denial, timeout or ambiguous failure returns unusable; do not reinstall to conceal it."
-            if legacy_probe else
-            "Return missing only when the probe proves the configured executor package or entry point is not installed in the current environment, including a proven missing executor module behind an available launcher. A missing unrelated dependency/helper, invalid command, permission denial, timeout, other started-but-failed command or ambiguous failure returns unusable; do not reinstall to conceal it."
-        ),
-        "execute_mode": "inline",
-    }
-    functions["prepare_install"] = {
-        "step1": "For >=, the installation target is the latest stable executor release satisfying the frozen lower bound. For ==, the target is exactly the declared release, even if the installed version is newer. Identify the current version, target, environment and any downgrade; use the configured executor_install command, not an invented alternative.",
-        "step2": "sys.assert('The configured installation command targets the requested release: latest stable satisfying >=, or exactly the version after ==; an unpinned latest command is not an exact-version installation. If its target cannot be established, stop instead of executing or silently rewriting it')",
-        "on_error": {"assertion_error": "unavailable", "default": "unavailable"},
-        "execute_mode": "inline",
-    }
-    functions["ask"]["step1"] = "sys.io.confirm('This skill requires {executor} with the frozen executor_version_policy. State the installed version or absence, required constraint, actual target version policy, environment and any upgrade/downgrade. Install it using {executor_install}?', options=['install', 'do_not_install']) -> choice"
-    functions["install"]["step3"] = "sys.assert('After installation, reparse the configured executor package version and verify executor_version_policy.requirement using numeric components; == requires equality, >= requires at least the bound. Unparseable, failed or mismatching rechecks stop without execution, retries or fallback')"
-    functions["install"]["on_error"] = {"command_error": "unavailable", "command_timeout": "unavailable", "assertion_error": "unavailable", "default": "unavailable"}
-    functions["unavailable"]["step1"] = "sys.io.notify('This request was not run because the required executor is missing, unusable, unverified or incompatible, or installation was declined or failed. Explain the actual reason and the declared version requirement; do not claim execution. The configured installation command is {executor_install}.')"
-    functions["run"]["constraints"] = [
-        "Only run after a verified matching installed version or a successful installation and matching recheck. Do not suppress the skill's own business confirmation gates. A business run failure is not permission to reinstall or upgrade."
-    ]
-    return json.dumps(program, ensure_ascii=False)
-
-
-BOOTSTRAP_JSON = _versioned_bootstrap()
-# Keep the exact preceding policy template only for explicit, offline migration.
-_PREVIOUS_POLICY_BOOTSTRAP_JSON = _versioned_bootstrap(legacy_probe=True)
-
+NOT_CURRENT = (
+    "This is not the current generator's interface. Back up the file, note the five launch strings "
+    "and version policy, delete it, regenerate, then restore non-default values."
+)
 
 class SkillInterfaceError(ValueError):
     def __init__(self, code: str, message: str):
@@ -303,76 +294,6 @@ def _non_negotiable(items: Any) -> list[str]:
     return lines or ["- Follow the non-negotiable rules declared in `user.content.aisp_contract`."]
 
 
-def _render_legacy_skill_md(skill_path: Path) -> str:
-    skill_dir, doc = load_skill(skill_path)
-    system = _content(doc, 0)
-    user = _content(doc, 1)
-    contract = _contract(doc)
-    skill_id = _one_line(system.get("id") or skill_dir.name)
-    if not skill_id:
-        raise ValueError("AISP system.content.id is required to generate SKILL.md")
-    name = _bridge_name(skill_id)
-    title = _title(system, skill_id)
-    instruction = _one_line(user.get("instruction"))
-    license_value = _one_line(system.get("license") or "Apache-2.0")
-    description = _description(system, contract)
-
-    lines = [
-        "---",
-        f"name: {_yaml_string(name)}",
-        f"description: {_yaml_string(description)}",
-        f"license: {_yaml_string(license_value)}",
-        "metadata:",
-        '  generated_from_aisp: "true"',
-        f"  aisp_program: {_yaml_string('aisp.aisop.json')}",
-        f"  protocol: {_yaml_string(PROTOCOL)}",
-        f"  bridge_mode: {_yaml_string('native_sidecar')}",
-        "---",
-        "",
-        f"# {title} (AISP-backed Agent Skill)",
-        "",
-        GENERATED_MARKER,
-        SOURCE_MARKER,
-        GENERATOR_MARKER,
-        "",
-        "This `SKILL.md` is a thin Agent Skills discovery bridge, not the source of truth. The executable source of truth is the same-folder `aisp.aisop.json` AISP program.",
-        "",
-        "Deleting this file does not change the native AISP skill. A conforming AISP/AISOP runtime should load `aisp.aisop.json`, read `user.content.aisp_contract`, and run `user.content.aisop.main` exactly as declared.",
-        "",
-        "## How to use",
-        "",
-        "1. Load `aisp.aisop.json` from this folder.",
-        "2. Read `user.content.aisp_contract` before following any workflow.",
-    ]
-    if instruction:
-        lines.append(f"3. Follow `user.content.instruction`: `{instruction}`.")
-    else:
-        lines.append("3. Follow `user.content.instruction` from the AISP program.")
-    lines.extend(
-        [
-            "4. Load declared resources only when the AISP graph reaches the node that needs them.",
-            "5. Enforce every non-negotiable rule through the mechanism named by `enforced_by`.",
-            "",
-            "## Declared resources",
-            "",
-            *_resources(contract.get("resources")),
-            "",
-            "## Non-negotiable boundaries",
-            "",
-            *_non_negotiable(contract.get("non_negotiable")),
-            "",
-            "## Runtime boundary",
-            "",
-            "Agent Skills platforms can use this bridge to discover and inspect the package. Hard guarantees such as `sys.assert`, `sys.io.confirm`, tool gating, dispatch behavior, and path confinement require a conforming AISP/AISOP runtime. A generic non-AISOP agent can only follow the contract on a best-effort basis.",
-            "",
-            "Passing `SKILL.md` generation or bridge validation proves only projection consistency and bridge shape. It does not prove external trust, safety, registry approval, or hard execution on a non-AISOP platform.",
-            "",
-            "Align Axiom 0: Human Sovereignty and Wellbeing. AISP - AI Skill Protocol V1.0.0. www.aisp.dev",
-        ]
-    )
-    return normalize_text("\n".join(lines))
-
-
 def _strict_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for key, value in pairs:
@@ -411,7 +332,7 @@ def _policy(value: Any) -> dict[str, str]:
 
 def _params(values: Any) -> dict[str, Any]:
     if not isinstance(values, dict) or set(values) != set(EXECUTOR_DEFAULTS) | {VERSION_POLICY_KEY}:
-        raise SkillInterfaceError("CONFIG", "params must contain the five launch strings and executor_version_policy; no executor fallback.")
+        raise SkillInterfaceError("CONFIG", "params must contain the five launch strings and executor_version_policy; no executor fallback. " + NOT_CURRENT)
     launch = _launch_values({key: values[key] for key in EXECUTOR_DEFAULTS})
     return {**launch, VERSION_POLICY_KEY: _policy(values[VERSION_POLICY_KEY])}
 
@@ -479,15 +400,12 @@ def _select_values(values: dict[str, Any], *, requirement: str | None = None,
     return _params(result)
 
 
-def _render_interface(skill_path: Path, values: dict[str, Any], *, callability_legacy: bool = False,
-                      version_policy_legacy: bool = False) -> str:
+def _render_interface(skill_path: Path, values: dict[str, Any]) -> str:
     skill_dir, doc = load_skill(skill_path)
     system = _content(doc, 0)
     name = _bridge_name(_one_line(system.get("id") or skill_dir.name))
-    bootstrap = (_CALLABILITY_BOOTSTRAP_JSON if callability_legacy else
-                 _PREVIOUS_POLICY_BOOTSTRAP_JSON if version_policy_legacy else BOOTSTRAP_JSON)
-    program = json.loads(bootstrap)
-    program[0]["content"]["params"] = _launch_values(values) if callability_legacy else _params(values)
+    program = json.loads(BOOTSTRAP_JSON)
+    program[0]["content"]["params"] = _params(values)
     lines = [
         "---",
         f"name: {_yaml_string(name)}",
@@ -508,7 +426,7 @@ def _render_interface(skill_path: Path, values: dict[str, Any], *, callability_l
 
 def _split_header(text: str) -> tuple[str, str]:
     if not text.startswith("---\n") or "\n---\n" not in text[4:]:
-        raise SkillInterfaceError("HEADER", "Expected standalone generated YAML frontmatter delimiters.")
+        raise SkillInterfaceError("HEADER", "Expected standalone generated YAML frontmatter delimiters. " + NOT_CURRENT)
     header, body = text[4:].split("\n---\n", 1)
     return header, body
 
@@ -522,13 +440,10 @@ def _executor_input(skill_dir: Path) -> tuple[dict[str, Any], str]:
     if path.resolve().parent != skill_dir.resolve():
         raise SkillInterfaceError("INPUT", "SKILL.md must stay in the same skill directory.")
     text = read_normalized(path)
-    # Full old projection matching prevents a damaged new file being mistaken for a migration.
-    if text == _render_legacy_skill_md(skill_dir):
-        return dict(EXECUTOR_DEFAULTS), "legacy migration"
     header, body = _split_header(text)
     blocks = re.findall(r"(?m)^```json\n(.*?)\n```$", body, re.DOTALL)
     if len(blocks) != 1:
-        raise SkillInterfaceError("CONFIG", "Expected exactly one two-message bootstrap JSON block; unknown content is not automatically migrated.")
+        raise SkillInterfaceError("CONFIG", "Expected exactly one two-message bootstrap JSON block. " + NOT_CURRENT)
     try:
         program = json.loads(blocks[0], object_pairs_hook=_strict_object)
     except json.JSONDecodeError as exc:
@@ -538,33 +453,28 @@ def _executor_input(skill_dir: Path) -> tuple[dict[str, Any], str]:
             or [message.get("role") for message in program] != ["system", "user"]
             or not isinstance(program[0].get("content"), dict)
             or not isinstance(program[1].get("content"), dict)):
-        raise SkillInterfaceError("CONFIG", "Bootstrap must have the fixed system/user two-message structure.")
+        raise SkillInterfaceError("CONFIG", "Bootstrap must have the fixed system/user two-message structure. " + NOT_CURRENT)
     raw_values = program[0]["content"].get("params")
-    old_shape = isinstance(raw_values, dict) and set(raw_values) == set(EXECUTOR_DEFAULTS)
-    values = _launch_values(raw_values) if old_shape else _params(raw_values)
-    expected_header, expected_body = _split_header(_render_interface(skill_dir, values, callability_legacy=old_shape))
+    values = _params(raw_values)
+    expected_header, expected_body = _split_header(_render_interface(skill_dir, values))
     actual_lines, expected_lines = header.splitlines(), expected_header.splitlines()
     if len(actual_lines) != len(expected_lines) or actual_lines[3:] != expected_lines[3:]:
-        raise SkillInterfaceError("HEADER", "Fixed interface metadata differs; repair explicitly, not through silent regeneration.")
+        raise SkillInterfaceError("HEADER", "Fixed interface metadata differs. " + NOT_CURRENT)
     for key, line in zip(("name", "description", "license"), actual_lines[:3]):
         try:
             value = json.loads(line.removeprefix(key + ": ")) if line.startswith(key + ": ") else None
         except json.JSONDecodeError as exc:
-            raise SkillInterfaceError("HEADER", "Derived YAML fields must use generated JSON string escaping.") from exc
+            raise SkillInterfaceError("HEADER", "Derived YAML fields must use generated JSON string escaping. " + NOT_CURRENT) from exc
         if not isinstance(value, str):
-            raise SkillInterfaceError("HEADER", f"Expected the generated {key} string field.")
+            raise SkillInterfaceError("HEADER", f"Expected the generated {key} string field. " + NOT_CURRENT)
     if body != expected_body:
-        if not old_shape:
-            _, previous_body = _split_header(_render_interface(skill_dir, values, version_policy_legacy=True))
-            if body == previous_body:
-                return values, "version policy migration"
-        raise SkillInterfaceError("BODY", "Fixed bootstrap body drift; only launch strings and version policy may change. Restore the fixed text explicitly before regenerating.")
-    return values, "callability migration" if old_shape else "current configuration preserved"
+        raise SkillInterfaceError("BODY", "Fixed bootstrap body drift; only launch strings and version policy may change. " + NOT_CURRENT)
+    return values, "current configuration preserved"
 
 
 def render_skill_md(skill_path: Path, *, executor_version_requirement: str | None = None,
                     refresh_executor_version: bool = False) -> str:
-    """Never write; resolve a default only for new/migrated or explicitly refreshed output."""
+    """Never write; resolve a default only for new or explicitly refreshed output."""
     skill_dir, _ = load_skill(skill_path)
     values, _ = _executor_input(skill_dir)
     return _render_interface(skill_dir, _select_values(values, requirement=executor_version_requirement, refresh=refresh_executor_version))
@@ -578,9 +488,7 @@ def validate_skill_md(skill_path: Path) -> list[dict[str, str]]:
         return [{"code": "AISP_E_M7_SKILL_MD_MISSING", "message": "Required same-folder SKILL.md is missing; generate it before validation."}]
     try:
         skill_dir, _ = load_skill(skill_path)
-        values, state = _executor_input(skill_dir)
-        if state in {"legacy migration", "callability migration", "version policy migration"}:
-            raise SkillInterfaceError("LEGACY", "Recognized legacy interface; preview or explicitly --write its migration. A check never migrates it.")
+        values, _ = _executor_input(skill_dir)
         if read_normalized(path) != _render_interface(skill_dir, values):
             raise SkillInterfaceError("HEADER", "Derived name, description or license differs from the skill; regenerate the derived header.")
     except SkillInterfaceError as exc:

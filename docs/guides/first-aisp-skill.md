@@ -218,7 +218,7 @@ A complete, conformant AISP skill: a self-contained folder, a 2-message body, a 
 
 - Add a second skill with `data/` + `scripts/`: see [`examples/aisp/stock_analysis_aisp/`](https://github.com/AIXP-Labs/AISP/tree/main/examples/aisp/stock_analysis_aisp).
 - Run a full conformance check: [Conformance Walkthrough](conformance-walkthrough.md).
-- Review the required interface, executor configuration and migration rules: [Interoperability with Agent Skills](../topics/interoperability-with-agent-skills.md).
+- Review the required interface, executor configuration and regeneration rules: [Interoperability with Agent Skills](../topics/interoperability-with-agent-skills.md).
 
 ---
 

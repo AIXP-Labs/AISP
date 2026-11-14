@@ -53,9 +53,9 @@ These files together define the AISP conformance framework. A skill is checked a
 
 ## Proto Definition
 
-The [aisp.proto](https://github.com/AIXP-Labs/AISP/blob/main/specification/aisp.proto) file provides the proto3 definition of AISP data structures (skill, skill contract, discovery, conformance) and service operations. It can be used to generate typed client and server code in any language supported by Protocol Buffers.
+The [aisp.proto](https://github.com/AIXP-Labs/AISP/blob/main/specification/aisp.proto) file provides the proto3 definition of the AISP service: its transport messages (skill, skill contract, discovery, conformance) and operations. It can be used to generate typed client and server code in any language supported by Protocol Buffers.
 
-Per `AISP_Protocol.md` §1.1 (Normative Artifacts and Their Roles), `aisp.proto` is **authoritative for data-object schemas and service contracts**; `AISP_Protocol.md` itself is authoritative for **rules and skill structure**. When the two appear to conflict, consult §1.1 for the tie-breaker order.
+Per `AISP_Protocol.md` §1.1 (Normative Artifacts and Their Roles), `aisp.proto` is **authoritative only for those service transport objects and API signatures**. It does not govern the native `aisp.aisop.json`, index, trace or manifest file formats, which follow `AISP_Protocol.md` and the applicable JSON Schemas. `AISP_Protocol.md` is the tie-breaker for **protocol rules and package structure**.
 
 ---
 

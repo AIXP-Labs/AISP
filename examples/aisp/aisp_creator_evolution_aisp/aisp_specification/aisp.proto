@@ -1,5 +1,7 @@
 // AI Skill Protocol (AISP) — Proto3 Definition
-// Authoritative normative definition of all AISP data objects and service operations.
+// Normative definition of this service's transport objects and API signatures.
+// Native skill, index, trace and manifest JSON formats are governed by the
+// Markdown specification and their applicable JSON Schemas.
 //
 // This proto file defines the skill-package-layer abstractions for AISP-compliant
 // AI skills. Unlike the execution language (AISOP) on which it builds, AISP

@@ -1,7 +1,7 @@
 {
   "manifest_version": "1.0",
   "directory": "aisp_specification",
-  "snapshot_date": "2026-11-13",
+  "snapshot_date": "2026-11-14",
   "source_url": "https://github.com/AIXP-Labs/AISP/tree/main/specification",
   "source_commit": "uncommitted-working-tree",
   "snapshot_state": "working_tree_revision",
@@ -11,23 +11,23 @@
   "files": [
     {
       "path": "AISP_Protocol_cn.md",
-      "bytes": 73507,
-      "sha256": "a092482149c90c028e2b99f8892d0f935ad180f52acd9af7d2b03546237fc078"
+      "bytes": 76614,
+      "sha256": "0a2192a02f0984bf89f6b4a547e6e2b65607b4b60047e822c36b17852eaadea5"
     },
     {
       "path": "AISP_Protocol.md",
-      "bytes": 81201,
-      "sha256": "997001a7caeff12ccc771bf9f6d0f1d5ae180517d0eb75f4b41fc1ae5890624d"
+      "bytes": 84640,
+      "sha256": "227bbb14504f6e1ccc73c6b18c02c4045439652a3aee8e2f963c9681f498f2b0"
     },
     {
       "path": "aisp.proto",
-      "bytes": 11318,
-      "sha256": "38066b3bc1f61bc61c39f8288b7ef42a4c900e086ceba3766cbff033b13718f9"
+      "bytes": 11448,
+      "sha256": "78681a34d3fb8de8c900ebf77a2640b0452c36ba2494d59b7797f69d38976dc0"
     },
     {
       "path": "standards/AISP_Standard.core.aisop.json",
-      "bytes": 16801,
-      "sha256": "7eae24d23295eed252d57722e51e7fa4d4240121fd050c7379a9ae00cf1bc01b"
+      "bytes": 16991,
+      "sha256": "4d9a1c523bffaeb5057eaee5355bac733fb5959e36d5c25d7805d932fe03a61b"
     },
     {
       "path": "standards/AISP_Standard.ecosystem.aisop.json",
@@ -36,8 +36,8 @@
     },
     {
       "path": "standards/AISP_Standard.security.aisop.json",
-      "bytes": 9111,
-      "sha256": "5adc978d30d0373ab4fef68246693e43838f0958949c81d6b1b34e14b626997f"
+      "bytes": 9339,
+      "sha256": "8d96a0d359381de70dd3439d9f16fbeaa662e532d91d01299f53b5a0d26fc35e"
     }
   ]
 }

@@ -135,14 +135,14 @@ This reference includes both codes emitted by the current reference tools and co
 | `AISP_W_EC6_EVOLUTION` | EC6 | WARN | Evolution removed a safety constraint, lowered `risk_level`, or expanded `tools` without justification | Restore the constraint or record justification |
 | `AISP_E_M7_SKILL_MD_MISSING` | M7 | FAIL | Required same-folder interface is absent | Explicitly generate it; no opt-out |
 | `AISP_E_M7_SKILL_MD_INPUT` | M7 | FAIL | Interface/native input cannot be read or derived, or interface is an escaping/nonregular link | Repair input/path explicitly |
-| `AISP_E_M7_SKILL_MD_HEADER` | M7 | FAIL | Derived name/description/license differ or fixed header/metadata drifted | Regenerate derived fields; restore fixed metadata explicitly |
-| `AISP_E_M7_SKILL_MD_CONFIG` | M7 | FAIL | Damaged/duplicate-key JSON, wrong two-message structure, missing/extra fields, empty/non-string launch value, or unknown content | Repair explicitly; no defaults fallback |
-| `AISP_E_M7_SKILL_MD_BODY` | M7 | FAIL | Fixed bootstrap, markers or other body text changed | Restore fixed text explicitly; write does not silently repair |
-| `AISP_E_M7_SKILL_MD_LEGACY` | M7 | FAIL | Exactly recognized old generated interface | Preview then explicitly write migration; read-only checks never migrate |
+| `AISP_E_M7_SKILL_MD_HEADER` | M7 | FAIL | Derived name/description/license differ or fixed header/metadata drifted | Regenerate derived fields with `--write`; if fixed metadata changed, back up, note launch strings and version policy, delete and regenerate |
+| `AISP_E_M7_SKILL_MD_CONFIG` | M7 | FAIL | Damaged/duplicate-key JSON, wrong two-message structure, missing/extra fields, empty/non-string launch value, or unknown content | Repair a damaged current interface explicitly, or back up, note launch strings and version policy, delete and regenerate; no defaults fallback |
+| `AISP_E_M7_SKILL_MD_BODY` | M7 | FAIL | Fixed bootstrap, markers or other body text changed | Back up, note launch strings and version policy, delete and regenerate; write does not silently repair |
+| `AISP_E_M7_SKILL_MD_LEGACY` | M7 | Retired | No longer emitted from the 2026-11-14 revision; old interfaces fail CONFIG, HEADER or BODY checks | Back up, note launch strings and version policy, delete and regenerate; checks never migrate |
 | `AISP_E_M7_SKILL_MD_VERSION` | M7 | FAIL | Invalid/unresolved version policy, unsupported constraint/source, or another executor lacks an explicit requirement | Use a concrete `>=X.Y.Z` or `==X.Y.Z` and valid source; do not substitute SoulRun |
 | `AISP_E_M7_SKILL_MD_RESOLUTION` | Generation | FAIL | Default SoulRun stable-release metadata is unavailable, malformed or unsupported | Stop without cached/default fallback; checks never invoke this resolver |
 | `AISP_I_M7_SKILL_MD` | M7 | INFO | Bootstrap unchanged and format valid; executor not certified | Does not prove execution, safety or external trust; keep runtime acceptance separate |
-| `AISP_E_EC7_BRIDGE_MODE` | EC7 / M7 | FAIL | Interface marker is not `agent_skills_bridge` | Explicitly migrate a recognized old projection or repair metadata |
+| `AISP_E_EC7_BRIDGE_MODE` | EC7 / M7 | FAIL | Interface marker is not `agent_skills_bridge` | Back up, delete and regenerate |
 | `AISP_E_EC7_BRIDGE_INPUT` | EC7 | FAIL | `SKILL.md` could not be read | Fix file permissions/encoding |
 | `AISP_E_EC7_FRONTMATTER` | EC7 | FAIL | `SKILL.md` frontmatter is missing, compressed, unclosed, contains unsupported top-level keys, or is outside the supported simple YAML shape | Use standalone `---` delimiters and only supported top-level keys: `name`, `description`, `license`, `allowed-tools`, `metadata` |
 | `AISP_E_EC7_NAME` | EC7 | FAIL | Bridge `name` is missing, not lowercase hyphenated, too long, or contains forbidden vendor branding | Set `name` to the same-folder AISP id minus `_aisp` with underscores hyphenated |
@@ -153,8 +153,8 @@ This reference includes both codes emitted by the current reference tools and co
 | `AISP_E_EC7_PROGRAM_MISSING` | EC7 | FAIL | `metadata.aisp_program` points to a missing native AISP file | Add `aisp.aisop.json` to the same folder or fix the path |
 | `AISP_E_EC7_BODY` | EC7 | FAIL | Bridge body does not guide loading `aisp.aisop.json` or does not state the bridge/source-of-truth boundary | Keep `SKILL.md` as a thin discovery bridge and name `aisp.aisop.json` |
 | `AISP_E_EC7_EMBEDDED_AISP` | EC7 | FAIL | Native same-folder AISP package failed reference validation | Fix the native `aisp.aisop.json` package |
-| `AISP_E_EC7_PROTOCOL` (formerly `AISP_W_EC7_PROTOCOL`) | EC7 / M7 | FAIL | Required interface protocol marker is not `AISP V1.0.0` | Restore the fixed metadata; cannot pass as a warning |
-| Historical `AISP_W_EC7_BRIDGE_MODE` | EC7 → M7 | Retired | Old `native_sidecar` marker is no longer a current interface | Use explicit legacy migration; current wrong markers FAIL `AISP_E_EC7_BRIDGE_MODE` and M7 |
+| `AISP_E_EC7_PROTOCOL` (formerly `AISP_W_EC7_PROTOCOL`) | EC7 / M7 | FAIL | Required interface protocol marker is not `AISP V1.0.0` | Back up, delete and regenerate; cannot pass as a warning |
+| Historical `AISP_W_EC7_BRIDGE_MODE` | EC7 → M7 | Retired | Old `native_sidecar` marker is no longer a current interface | Regenerate; current wrong markers FAIL `AISP_E_EC7_BRIDGE_MODE` and M7 |
 | Historical `AISP_W_EC7_RUNTIME_BOUNDARY` | EC7 → M7 | Retired | Runtime-boundary keyword heuristic is replaced by fixed-bootstrap checking | Changed fixed text fails M7; do not add free-form repair prose |
 | Historical `AISP_W_EC7_LOGIC_COPY` | EC7 → M7 | Retired | Functions in the fixed bootstrap are legitimate, not copied business logic | Exact M7 comparison rejects drift; the keyword-only warning is no longer emitted |
 | `AISP_I_EC7_EMBEDDED_AISP` | EC7 | INFO | Native same-folder AISP program passed reference validation | Keep this validation record with release evidence |

@@ -48,7 +48,7 @@ Changes to the AISP protocol follow strict Semantic Versioning (SemVer):
 
 The current protocol version is **V1.0.0**. The `aisp_contract.profile` is detected by its `aisp.skill.` prefix; only a `profile` major change (`v1` → `v2`) is considered incompatible. The Axiom 0 immutability constraint supersedes all versioning rules.
 
-The current internal V1.0.0 candidate intentionally keeps that version marker while tightening M7 and executor-only execution. This is not a claim of equivalent old/new conformance: CHANGELOG records rejected old interfaces, explicit migration and actual tool digests. The local native Creator's M7 migration is present. Publication still requires accepted evidence for the intended hosts and distribution targets, review of known limitations, and explicit authorization; local tool success alone cannot grant it.
+The current internal V1.0.0 candidate intentionally keeps that version marker while tightening M7 and executor-only execution. This is not a claim of equivalent old/new conformance: CHANGELOG records rejected old interfaces, regeneration and actual tool digests. The local native Creator's M7 migration is present. Publication still requires accepted evidence for the intended hosts and distribution targets, review of known limitations, and explicit authorization; local tool success alone cannot grant it.
 
 ## Protocol Steering
 

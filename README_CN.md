@@ -89,25 +89,15 @@ SoulRun 默认下限在首次生成或显式刷新时解析最新稳定版，并
 
 ## 快速开始
 
-前置条件：Python 3.11 或更高版本。参考工具运行时只用 Python 标准库；`jsonschema` 只用于 schema 相关测试覆盖。
+参考工具需要 Python 3.11 或更高版本。可直接在源码目录运行脚本，只用标准库，
+无须安装本仓库。
 
-直接在源码目录运行参考脚本，无须安装本仓库。schema 相关测试需要单独安装已声明的测试依赖：
+测试依赖、可选开发安装与打包方式见[贡献指南](CONTRIBUTING_CN.md#文档检查)。
+仅分发工具的 wheel 不包含技能示例、schema 或执行器。
 
-```bash
-python -m pip install "jsonschema>=4"
-```
-
-可选开发安装：`python -m pip install -e ".[dev]"`。
-打包配置显式包含 `tools`；已检查离线 editable 元数据、wheel 构建及干净 venv
-安装后的八个命令入口。wheel 包含参考工具，不包含技能示例、schema 或运行器。
-下方源码命令仍可在不安装本仓库时使用。安装成功或检查通过不代表获准发布。
-
-打包需要仅构建期使用的 `setuptools>=84.1.0`；安装后的参考工具仍只依赖标准库。
-忽略规则不会清理已跟踪文件、历史或分发归档。分享前须检查本地产物和构建制品，
-详见[安全政策（英文）](SECURITY.md#repository-hygiene)。
-wheel 的包数据设置与源码归档选取分开处理：[`MANIFEST.in`](MANIFEST.in) 会在存在
-旧源文件清单时仍从 sdist 排除已知私密文件及运行、测试、构建和 `.venv` 残留。这是有界防护，不是完整秘密
-检测器；仍须使用干净源码构建并检查实际归档。
+忽略规则不会清理已跟踪文件、历史或归档。分享前须检查实际产物，
+见[安全政策（英文）](SECURITY.md#repository-hygiene)。
+安装成功或检查通过不代表获准发布。
 
 ### 1. 查看包结构
 
@@ -266,7 +256,7 @@ soulrun --aisp examples/aisp/yijing_aisp --soulrun-cache-dir ../aisp-demo-run/.s
 | SKILL.md 生成/检查 | 文件存在、技能派生头部、固定引导正文、执行器配置与版本策略格式（M7）| 执行器认证、平台行为、安全、信任或执行完成 |
 | Bridge validator | 共享 M7，加头部/路径安全和原生包校验 | 运行期硬保证或执行完成 |
 
-缺失、旧版或漂移的 `SKILL.md` 均为 M7 failure，无 opt-out。核心与桥检查共用只读函数；通过只证明引导未改、格式正确，不认证执行器、信任、安全或执行完成。明确迁移、执行器配置与版本策略与会话限制见规范 §20。
+缺失、旧版或漂移的 `SKILL.md` 均为 M7 failure，无 opt-out。核心与桥检查共用只读函数；通过只证明引导未改、格式正确，不认证执行器、信任、安全或执行完成。重新生成、执行器配置与版本策略与会话限制见规范 §20。
 
 `enforced_by: tools` 在纯静态模式下仍是条件性保证。`--strict-tools` 要求满足检查器的事件/provenance 证据条件，裸 `tool_enforcement: "hard"` 自报不足以通过。但满足这些条件并不独立认证证据来源，也不自动证明真实的硬执行；硬保证仍取决于运行时实际权限控制和可信的证据来源。
 
@@ -274,27 +264,10 @@ soulrun --aisp examples/aisp/yijing_aisp --soulrun-cache-dir ../aisp-demo-run/.s
 畸形产物也会失败，而非降为 warning。README/SKILL.md 写入拒绝符号链接输出，
 并逐文件原子替换。批量预检不等于多文件事务；后续 I/O 失败可能保留明确报告的先前写入。
 
-文档检查拒绝缺失或越界的扫描目标，并从正文而非围栏/行内代码示例识别锚点；
-它是有界 Markdown 检查器，不是完整渲染引擎。trace 中明确否认合同读取或可见性、
-却又存在相应肯定事件时会失败；一致性仍不等于 trace 真实性认证。已知 inline 节点
-（包括省略模式时的默认值）若记录了派发事件，也必须保持 inline。非法链接路径或
-不可读的锚点目标会返回失败，而非异常崩溃。
-
-严格校验拒绝 `null` 等非程序 JSON 值；解析失败不是成功的空报告。
-已知可选文本字段出现时须为字符串，`params` 须为对象，`tools` 须为非空白字符串数组；
-除非另有绑定要求工具白名单，否则允许省略 `tools` 或使用空数组。这不新增必填字段，
-不认证许可证标识，也不证明提示语义。只有许可证缺失或字符串仅含空白才触发存在性
-warning；非字符串许可证仍按类型错误 FAIL，不混报为缺失许可证。
-索引检查同时比较目录派生的路由元数据及 id/path，陈旧缓存仍按 EC2 发 warning。
-哈希输出拒绝覆盖业务程序和声明资源输入，包括别名。
-读取文件前还须确认共享资源根仍在所选 `aisp/` 目录内。接口检查保留 `SKILL.md`
-的链接身份并拒绝符号链接；递归投影拒绝越界技能目录。发现脚本扫描是有界 AST
-检查，不是沙箱，也不证明代码无害。
-资源模式检查覆盖选定的字面量读取和 run/bg 调用，包括常见的带引号 Python 路径及
-无害的点/分隔符别名；动态命令和运行期真实模式门控仍不由这项静态检查证明。
-Python 组合选项与文件操作数分别识别。不同 scope 的资源可以同名。若所有匹配声明
-都禁止当前操作，SE3 失败；其余目标不明的字面量用法发 warning，不证明所选 scope，
-也不合并权限。
+类型、路径、资源模式及 trace 等检查细节见[验证器覆盖矩阵（英文）](docs/reference/validator-coverage.md)。
+哈希输出保护与证据格式见[Registry 与 Runtime 产物（英文）](docs/reference/registry-runtime-artifacts.md)；
+warning 处理与发布要求见[发布证据矩阵](docs/reference/release-evidence-matrix_CN.md)。
+这些有界检查不是沙箱，也不证明完整的运行期强制。
 
 ## 示例
 
@@ -330,7 +303,7 @@ Creator 候选发布门包含可执行脚本回归，不只是只读检查。静
 | [发布证据矩阵](docs/reference/release-evidence-matrix_CN.md) / [English](docs/reference/release-evidence-matrix.md) | 发布检查清单、证据层级、预期 warning 和信任边界 |
 | [验证器覆盖（英文）](docs/reference/validator-coverage.md) | 参考工具的静态、trace 证据与 bridge 检查覆盖范围 |
 | [生成式技能 README（英文）](docs/reference/generated-readme.md) | 单技能 README 的生成、检查与信任边界 |
-| [Agent Skills 接口（英文）](docs/topics/interoperability-with-agent-skills.md) | 必需的 SKILL.md、版本条件、明确迁移与宿主边界 |
+| [Agent Skills 接口（英文）](docs/topics/interoperability-with-agent-skills.md) | 必需的 SKILL.md、版本条件、重新生成与宿主边界 |
 | [Registry 与 Runtime 产物（英文）](docs/reference/registry-runtime-artifacts.md) | Runtime trace、registry manifest 与工具能力 schema |
 | [快照发布流程（英文）](docs/guides/snapshot-release-workflow.md) | 刷新 creator 内嵌快照与发布 metadata 的流程 |
 | [aisp.proto](specification/aisp.proto) | 技能发现与一致性服务的 Proto3 schema |

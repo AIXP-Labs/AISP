@@ -21,7 +21,7 @@ Thank you for your interest in contributing to the AI Skill Protocol! This docum
 ### Reporting Issues
 
 - Use [GitHub Issues](https://github.com/AIXP-Labs/AISP/issues) to report bugs, suggest features, or propose specification changes
-- For specification changes, use the `spec-change` issue template
+- For specification changes, open an issue describing the proposal; maintainers apply the `spec-change` label
 - Provide clear descriptions with examples where possible
 
 ### Discussion-Driven Development
