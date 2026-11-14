@@ -7,7 +7,7 @@ The skill contract is the lean metadata tier (Tier S). It holds only what the ex
 
 Because the contract sits in the user message, the model reads it directly this turn. The sibling `instruction` (`"STRICTLY OBEY aisp_contract; …; then RUN aisop.main"`) names it for obedience.
 
-> **Machine-readable schema.** This contract is formally specified by [`schemas/aisp-contract-v1.schema.json`](../../schemas/aisp-contract-v1.schema.json) (JSON Schema draft 2020-12). It declares `profile` / `invocation` / `non_negotiable` as required, enforces the `profile` `aisp.skill.` prefix and the `enforced_by` grammar, and constrains the `risk_level` and resource `mode` / `scope` enums plus the optional resource `sha256` field.
+> **Machine-readable schema.** This contract is formally specified by [`schemas/aisp-contract-v1.schema.json`](https://github.com/AIXP-Labs/AISP/blob/main/schemas/aisp-contract-v1.schema.json) (JSON Schema draft 2020-12). It declares `profile` / `invocation` / `non_negotiable` as required, enforces the versioned `profile` form `aisp.skill.v<major>` and the `enforced_by` grammar, and constrains the `risk_level` and resource `mode` / `scope` enums plus the optional resource `sha256` field.
 
 ---
 
@@ -150,4 +150,4 @@ A single risk grade for trust / registry. Fine-grained governance comes from `sy
 
 ---
 
-Align Axiom 0: Human Sovereignty and Wellbeing | Protocol: AISP | Execution: AISOP | Executor: SoulBot
+Align Axiom 0: Human Sovereignty and Wellbeing | Protocol: AISP | Execution: AISOP | Default Executor: SoulRun (replaceable)

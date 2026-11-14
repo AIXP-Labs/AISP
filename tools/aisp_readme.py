@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
 from typing import Any
 
 try:
-    from .aisp_hash import compute_manifest
+    from .aisp_hash import check_generated_target, compute_manifest, load_skill, write_generated_text
 except ImportError:  # pragma: no cover - script execution path
-    from aisp_hash import compute_manifest
+    from aisp_hash import check_generated_target, compute_manifest, load_skill, write_generated_text
 
 
 GENERATED_MARKER = "<!-- generated_from_aisp: true -->"
@@ -32,16 +31,7 @@ def read_normalized(path: Path) -> str:
 
 
 def write_lf(path: Path, text: str) -> None:
-    path.write_text(normalize_text(text), encoding="utf-8", newline="\n")
-
-
-def load_skill(skill_path: Path) -> tuple[Path, list[Any]]:
-    skill_dir = skill_path if skill_path.is_dir() else skill_path.parent
-    skill_file = skill_dir / "aisp.aisop.json" if skill_path.is_dir() else skill_path
-    doc = json.loads(skill_file.read_text(encoding="utf-8-sig"))
-    if not isinstance(doc, list) or len(doc) != 2:
-        raise ValueError(f"{skill_file} must be a two-message AISP JSON array")
-    return skill_dir.resolve(), doc
+    write_generated_text(path, normalize_text(text))
 
 
 def _content(doc: list[Any], index: int) -> dict[str, Any]:
@@ -160,7 +150,9 @@ def render_readme(skill_path: Path) -> str:
         "",
         "## How To Run",
         "",
-        "With an AISOP runtime:",
+        "This skill MUST run through a conforming AISP/AISOP executor (SoulRun by default; other conforming executors are allowed). Without an available executor, stop rather than executing or continuing the skill yourself.",
+        "",
+        "Through the executor's regular interface:",
         "",
         "1. Load `aisp.aisop.json`.",
         "2. Read `user.content.aisp_contract` before execution.",
@@ -168,13 +160,15 @@ def render_readme(skill_path: Path) -> str:
         "4. Enforce every `non_negotiable` rule and every referenced `sys.*` mechanism.",
         "5. Treat `sys.io.confirm` and other human-confirmation gates as blocking controls.",
         "",
-        "With a generic AI or non-AISOP agent:",
+        "With an Agent Skills host:",
         "",
         "- Treat this README as bootstrap guidance only.",
         "- Verify external provenance or obtain explicit human approval before executing an untrusted package.",
-        "- Load the contract from `aisp.aisop.json`; do not treat this README as authoritative.",
-        "- Follow `RUN aisop.main` and the non-negotiable rules on a best-effort basis.",
-        "- Hard guarantees such as `sys.assert`, tool gating, and `sys.io.confirm` exist only in a conforming AISOP runtime.",
+        "- Use the same-folder `SKILL.md` compatibility interface to hand execution to the executor; do not treat this README as authoritative.",
+        "- Ask the user before installing an executor. Before installation, that confirmation depends on the host's controls, not an absent executor.",
+        "- Do not bypass the executor to execute or continue `aisp.aisop.json`. Reading through its regular interface or user-requested code review is allowed.",
+        "- Static interface checks prove only unchanged bootstrap text and valid format, not executor certification, safety or a completed run.",
+        "- Hard guarantees such as `sys.assert`, tool gating, and `sys.io.confirm` require a conforming executor; command exit 0 alone does not mean execution completed.",
         "",
         "## Non-Negotiable Rules",
         "",
@@ -188,10 +182,11 @@ def render_readme(skill_path: Path) -> str:
         "",
         "| Hash | Value | Meaning |",
         "| --- | --- | --- |",
+        f"| `program_sha256` | `{manifest.get('program_sha256')}` | Canonical JSON hash of the complete two-message business program |",
         f"| `contract_sha256` | `{manifest.get('contract_sha256')}` | Recomputable hash of `user.content.aisp_contract` |",
         f"| `resources_sha256` | `{manifest.get('resources_sha256')}` | Recomputable hash of declared resource records |",
         "",
-        "`package_sha256` is intentionally not embedded here because a README is part of the distributed package and package-level hashes belong in external registry/provenance artifacts. Recompute it with `tools/aisp_hash.py` at publication time.",
+        "`package_sha256` belongs in an external registry/provenance artifact. Manifest 1.1 binds the complete program plus contract and declared-resource evidence, not every archive file or the SKILL.md executor configuration. Legacy 1.0 hashes did not bind the program body. Recompute with `tools/aisp_hash.py` at publication time.",
         "",
         "These hashes show local integrity only. They do not prove trust, safety, or registry approval.",
         "",
@@ -205,6 +200,7 @@ def render_readme(skill_path: Path) -> str:
 def check_readme(skill_path: Path) -> tuple[bool, str]:
     skill_dir, _ = load_skill(skill_path)
     readme = skill_dir / "README.md"
+    check_generated_target(readme)
     if not readme.is_file():
         return False, f"missing {readme}"
     expected = render_readme(skill_dir)
@@ -220,7 +216,15 @@ def iter_skill_dirs(target: Path) -> list[Path]:
     if target.is_dir() and (target / "aisp.aisop.json").is_file():
         return [target.resolve()]
     if target.is_dir():
-        return sorted(path.parent.resolve() for path in target.rglob("aisp.aisop.json") if path.parent.name.endswith("_aisp"))
+        folders = set()
+        for path in target.rglob("aisp.aisop.json"):
+            if not path.parent.name.endswith("_aisp"):
+                continue
+            folder = path.parent.resolve()
+            if not folder.is_relative_to(target.resolve()):
+                raise ValueError("Discovered skill folder resolves outside the selected directory")
+            folders.add(folder)
+        return sorted(folders)
     return []
 
 
@@ -236,7 +240,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     target = Path(args.target)
-    skill_dirs = iter_skill_dirs(target)
+    try:
+        skill_dirs = iter_skill_dirs(target)
+    except (OSError, ValueError, RuntimeError) as exc:
+        print(f"ERROR: cannot discover skills: {exc}", file=sys.stderr)
+        return 1
     if not skill_dirs:
         print(f"ERROR: no AISP skill found under {target}", file=sys.stderr)
         return 1
@@ -257,9 +265,19 @@ def main(argv: list[str] | None = None) -> int:
                 failed = failed or not ok
             return 1 if failed else 0
         if args.write or args.write_all:
+            prepared = []
             for skill_dir in skill_dirs:
                 out = skill_dir / "README.md"
-                write_lf(out, render_readme(skill_dir))
+                check_generated_target(out)
+                prepared.append((out, render_readme(skill_dir)))
+            written = []
+            for out, text in prepared:
+                try:
+                    write_lf(out, text)
+                except OSError:
+                    print(f"ERROR: I/O failure; completed: {[str(path) for path in written]}; failed: {out}; not attempted: {[str(path) for path, _ in prepared[len(written) + 1:]]}", file=sys.stderr)
+                    raise
+                written.append(out)
                 print(f"Wrote {out}")
             return 0
         print(render_readme(skill_dirs[0]), end="")

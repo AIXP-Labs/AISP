@@ -49,12 +49,15 @@ nav:
     - Discovering Skills: guides/discovering-skills.md
     - Conformance Walkthrough: guides/conformance-walkthrough.md
     - 一致性检查指南: guides/conformance-walkthrough_CN.md
+    - Snapshot Release Workflow: guides/snapshot-release-workflow.md
   - Reference:
     - aisp.aisop.json Fields: reference/aisp-fields.md
     - aisp_contract Fields: reference/aisp_contract-fields.md
     - enforced_by Grammar: reference/enforced_by-grammar.md
     - Conformance Rules: reference/conformance-rules.md
     - Validator Coverage: reference/validator-coverage.md
+    - Release Evidence Matrix: reference/release-evidence-matrix.md
+    - 发布证据矩阵: reference/release-evidence-matrix_CN.md
     - Generated Skill README: reference/generated-readme.md
     - Registry & Runtime Artifacts: reference/registry-runtime-artifacts.md
     - Threat Taxonomy: reference/threat-taxonomy.md

@@ -17,15 +17,15 @@ An AISP skill lives at `aisp/<id>_aisp/aisp.aisop.json`. The file is a JSON arra
 | `name` | system.content | string | MUST | Human-readable skill name |
 | `version` | system.content | string | MUST | SemVer of this skill |
 | `license` | system.content | string | SHOULD | SPDX license — default `"Apache-2.0"` |
-| `summary` | system.content | string | MUST | One-sentence capability overview |
-| `description` | system.content | string | SHOULD | Detailed description |
+| `summary` | system.content | string | MAY | One-sentence capability overview; recommended for discovery |
+| `description` | system.content | string | MAY | Detailed description |
 | `flow_format` | system.content | string | MUST | `"mermaid"` \| `"jsonflow"` \| `"hybrid"` |
 | `loading_mode` | system.content | string | MUST | Fixed `"node"` for AISP skills |
 | `tools` | system.content | array | MAY | Tool declarations (capability allow-list) |
 | `params` | system.content | object | MAY | Input parameter declarations |
 | `system_prompt` | system.content | string | MAY | Behavioral layer — MAY be empty `""` |
 | `instruction` | user.content | string | MUST | Strong directive (immutable form, see below) |
-| `user_input` | user.content | string | SHOULD | Runtime placeholder `"{user_input}"` |
+| `user_input` | user.content | string | MAY | Runtime placeholder `"{user_input}"`; not required for every invocation |
 | `aisp_contract` | user.content | object | MUST | The skill contract — a **real object** (see [aisp_contract Fields](aisp_contract-fields.md)) |
 | `aisop` | user.content | object | MUST | Execution graph container (`main` = flow string/object) |
 | `functions` | user.content | object | MUST | Per-node execution steps |
@@ -85,13 +85,13 @@ An AISP skill lives at `aisp/<id>_aisp/aisp.aisop.json`. The file is a JSON arra
 | Required | SHOULD |
 | Type | string (SPDX identifier) |
 | Default | `"Apache-2.0"` |
-| Note | Program-identity license. The contract does NOT duplicate it. |
+| Note | Program-identity license. The contract does NOT duplicate it. Omission or a blank string warns; a present non-string fails its type check instead. These checks do not certify an SPDX identifier. |
 
 ### summary
 
 | Constraint | Value |
 |------------|-------|
-| Required | MUST |
+| Required | MAY |
 | Type | string (one sentence) |
 | Example | `"Cast and interpret an I Ching (Yijing) hexagram for a user's question."` |
 
@@ -99,9 +99,9 @@ An AISP skill lives at `aisp/<id>_aisp/aisp.aisop.json`. The file is a JSON arra
 
 | Constraint | Value |
 |------------|-------|
-| Required | SHOULD |
+| Required | MAY |
 | Type | string |
-| Example | `"Native AISP skill: clarify the question, cast a hexagram via a deterministic toss, and interpret it for reflection (not deterministic prediction)."` |
+| Example | `"Native AISP skill: clarify the question, cast a hexagram randomly, and interpret it for reflection (not deterministic prediction)."` |
 
 ### flow_format
 
@@ -125,7 +125,8 @@ An AISP skill lives at `aisp/<id>_aisp/aisp.aisop.json`. The file is a JSON arra
 | Constraint | Value |
 |------------|-------|
 | Required | MAY |
-| Type | array of strings (or structured tool objects) |
+| Type | array of non-empty strings (not whitespace-only); structured tool objects are not an inherited declaration format |
+| Note | Omission and `[]` are allowed unless a separate `enforced_by: tools` binding requires a restricted allow-list. String-array shape does not prove runtime permission enforcement. |
 | Role | Capability allow-list. Backs `enforced_by: tools` red lines (hard only when the runtime enforces tool permissions). |
 | Example | `["filesystem", "code"]`, `["filesystem", "shell"]` |
 
@@ -169,13 +170,13 @@ An AISP skill lives at `aisp/<id>_aisp/aisp.aisop.json`. The file is a JSON arra
 | Type | string |
 | Immutable form | `"STRICTLY OBEY aisp_contract; its non_negotiable rules are inviolable; then RUN aisop.main"` |
 
-The `instruction` is a strong directive: it names the contract for obedience and then asserts execution of `aisop.main`. It makes the model **necessarily read** the contract this turn (it is sitting in the same user message), without depending on a runtime render step.
+The `instruction` names the contract for obedience and directs execution of `aisop.main`. Placing the contract in the user message exposes it directly in context without a separate render step; it does not prove that the model understood or obeyed it. Actual enforcement remains the runtime's responsibility.
 
 ### user_input
 
 | Constraint | Value |
 |------------|-------|
-| Required | SHOULD |
+| Required | MAY |
 | Type | string |
 | Form | `"{user_input}"` — runtime placeholder substituted by the executor with the actual user message |
 
@@ -185,7 +186,7 @@ The `instruction` is a strong directive: it names the contract for obedience and
 |------------|-------|
 | Required | MUST |
 | Type | **object** (a real JSON object — never a string) |
-| Detection | `profile` starts with `aisp.skill.` |
+| Profile | MUST match `aisp.skill.v<major>`; prefix recognition alone is not validation |
 | Reference | See [aisp_contract Field Reference](aisp_contract-fields.md) for the full schema |
 
 ### aisop (Execution Graph)
@@ -219,7 +220,7 @@ The `instruction` is a strong directive: it names the contract for obedience and
 | `step1`, `step2`, ... | string | MUST (≥1) | Ordered execution steps. Only numeric `stepN` keys (`step1`, `step2`, ...) count as execution steps. Each step is exactly one of: a `sys.*` call, a `RUN aisop.*` sub-task, or a natural-language instruction. Metadata keys such as `step_note` do not count. |
 | `constraints` | array | MAY | Per-node constraints (soft guidance) |
 | `output_mapping` | string | MAY | Names the node's output for cross-node transfer |
-| `on_error` | string/object | MAY | Failure routing for the node |
+| `on_error` | object | MAY | Error-type to existing-handler-node mapping; not a string shortcut |
 | `execute_mode` | string | MAY | Dispatch mode — an inherited AISOP node field (AISOP spec §5.2.8): `"inline"` (default current-context execution) or `"agent"` (independent sub-agent for isolation, source gathering, generation, complex validation, or high-impact decisions). If omitted, runtime falls back to `"inline"` and the reference validator warns. A runtime MUST honor `agent` (**R7**): an `agent` node MUST run as a sub-agent, never collapsed inline. A dispatch attribute, **not** an `enforced_by` mechanism. |
 
 **Rules for functions**
@@ -291,4 +292,4 @@ The `instruction` is a strong directive: it names the contract for obedience and
 
 ---
 
-Align Axiom 0: Human Sovereignty and Wellbeing | Protocol: AISP | Execution: AISOP | Executor: SoulBot
+Align Axiom 0: Human Sovereignty and Wellbeing | Protocol: AISP | Execution: AISOP | Default Executor: SoulRun (replaceable)

@@ -46,7 +46,7 @@ If Axiom 0 could be weakened in a future version, the entire trust model built o
 
 ### The Closing Seal
 
-Every specification document, and a skill's `system_prompt` when present, ends with the alignment seal so that the commitment is always visible:
+Repository specification documents use the alignment seal to make the commitment visible. A skill's `system_prompt` MAY be empty; a non-empty prompt must follow the specification's conflict rules, not an additional seal-based package check:
 
 ```text
 Align Axiom 0: Human Sovereignty and Wellbeing. AISP — AI Skill Protocol V1.0.0. www.aisp.dev
@@ -68,7 +68,7 @@ Because a skill body is an AISOP program, Axiom 0 propagates without restating i
 
 ## The Closing Seal
 
-The seal is not decoration. It is a structural marker that every artifact — spec, ADR, guide, reference, and any `system_prompt` — has been written under the Axiom 0 commitment. Omitting it from a normative document is a conformance defect. The canonical form is:
+The seal is a repository documentation convention for specs, ADRs, guides and references. It does not authenticate an artifact or prove Axiom 0 compliance, and it is not an extra M1-M7 requirement for `system_prompt`. The canonical form is:
 
 ```text
 Align Axiom 0: Human Sovereignty and Wellbeing. AISP — AI Skill Protocol V1.0.0. www.aisp.dev
@@ -85,9 +85,9 @@ Axiom 0's strength comes from a two-layer model — the same model that distingu
 | **Soft-read** | The model reads the contract and its `non_negotiable` rules in the user message (policy-as-prompt) | Soft — depends on the model attending to the rule |
 | **Hard-stop** | `non_negotiable.enforced_by → sys.*` (e.g. `sys.assert`, `sys.io.confirm`) is enforced by the runtime (policy-as-code) | Hard — holds regardless of whether the model "remembers" |
 
-> The contract in the user message makes the model **necessarily read** the red line (no rendering gamble); `enforced_by → sys.*` makes the red line **necessarily enforced** (no memory gamble). Both layers are required.
+> The user-message contract makes the red line directly available in context; a conforming runtime must enforce its bound mechanism. Availability does not prove understanding, and declaring a binding does not prove execution. Both layers are required.
 
-Hard guarantees come **only** from `sys.*`. A red line written only as prose is a soft suggestion; a red line bound to `sys.io.confirm` or `sys.assert` is an Axiom 0 guarantee. See [enforced_by & sys.*](enforced-by-and-sys.md).
+Hard guarantees require actual enforcement of `sys.*`, required graph topology or genuinely restricted tools. Unsupported or unverified assertions must not be counted as hard checks, and real blocking confirmation must not be bypassed. See [enforced_by & sys.*](enforced-by-and-sys.md).
 
 ---
 

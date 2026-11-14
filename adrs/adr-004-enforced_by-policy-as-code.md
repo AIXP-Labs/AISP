@@ -14,7 +14,7 @@ The relevant background: AISOP already provides a deterministic `sys.*` family (
 
 ## Decision
 
-**Each `non_negotiable` rule binds a natural-language declaration (`rule`) to a real enforcement mechanism (`enforced_by`). Only `sys.*`-backed bindings are hard guarantees.**
+**Each `non_negotiable` rule binds a natural-language declaration (`rule`) to an enforcement mechanism (`enforced_by`). Hard guarantees require actual runtime enforcement of the named `sys.*`, topology or restricted-tool mechanism; a declaration or static prefix match alone is not proof.**
 
 The `enforced_by` grammar (each form MUST point to a mechanism that actually exists in the skill):
 
@@ -24,7 +24,7 @@ The `enforced_by` grammar (each form MUST point to a mechanism that actually exi
 
 The distinction is explicit: the NL `rule` is **policy-as-prompt** (soft; the model reads it); `enforced_by → sys.*` is **policy-as-code** (hard; the runtime enforces it regardless of whether the model "remembers"). A declarative rule field is named `non_negotiable`, *not* `assert` — because `assert` is already `sys.assert`, a deterministic hard check, which would be the opposite semantics.
 
-This "declaration ↔ enforcement, machine-verifiable" binding is AISP's core differentiator from prose skills.
+M4 verifies the binding reference's existence and mechanism prefix, not the rule's full semantics, expression support or physical execution. Unsupported or unverified assertions cannot be counted as verified hard checks; event/provenance fields also require external trust assessment.
 
 ## Consequences
 

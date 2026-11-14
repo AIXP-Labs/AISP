@@ -9,7 +9,7 @@
       "version": "1.0.0",
       "license": "Apache-2.0",
       "summary": "Cast and interpret an I Ching (Yijing) hexagram for a user's question.",
-      "description": "Native AISP skill: clarify the question, cast a hexagram via a deterministic toss, and interpret it for reflection (not deterministic prediction).",
+      "description": "Native AISP skill: clarify the question, cast a hexagram randomly, and interpret it for reflection (not deterministic prediction).",
       "flow_format": "mermaid",
       "loading_mode": "node",
       "tools": [
@@ -100,8 +100,8 @@
         "interpret": {
           "step1": "sys.assert('hexagram != null', 'No hexagram has been cast')",
           "step2": "sys.io.read('data/interpretation_guide.md') -> guide",
-          "step3": "sys.llm.json('Interpret the hexagram for the question using guide', schema={summary:'string', guidance:'string', changing_lines:'array', disclaimer:'string'}) -> reading",
-          "step4": "sys.assert(\"'reflection' in reading.disclaimer.lower() or 'not deterministic' in reading.disclaimer.lower()\", 'Reading must state it is for reflection, not deterministic prediction')",
+          "step3": "sys.llm.json('Interpret the hexagram for the question using guide. Set disclaimer exactly to: For reflection only, not deterministic prediction.', schema={summary:'string', guidance:'string', changing_lines:'array', disclaimer:'string'}) -> reading",
+          "step4": "sys.assert(\"reading.disclaimer == 'For reflection only, not deterministic prediction.'\", 'The required disclaimer must match the declared wording')",
           "step5": "Render reading as Markdown.",
           "constraints": [
             "Ground the interpretation in the cast hexagram and guide; do not fabricate hexagrams."

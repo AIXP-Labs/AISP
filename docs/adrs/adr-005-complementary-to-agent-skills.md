@@ -2,43 +2,40 @@
 
 ## Status
 
-Accepted
+Accepted direction; the current V1.0.0 tightening remains an internal protocol candidate. The local native Creator's M7 migration is present; applicable host/distribution evidence and publication authorization remain separate release requirements.
 
 ## Context
 
-"Skill" is an established term. Agent Skills (`SKILL.md`) is a cross-vendor open standard already supported by Claude Code, Codex, Gemini, Copilot, and Cursor. AISP introduces a different kind of skill — executable and governable — and had to decide how to position itself relative to Agent Skills:
+AISP needs an executable, governable business program and a standard interface for agent platforms. AISOP supplies the execution language; Agent Skills supplies the compatibility interface. Neither should become a duplicate source of business truth.
 
-1. **Replacement.** Claim AISP supersedes Agent Skills. This is adversarial, factually weak (AISP native skills cannot run on existing platforms without a runtime), and legally riskier.
-2. **A wrapper around Agent Skills.** Make AISP a layer that produces `SKILL.md`. This subordinates AISP to another standard and loses the "executable + governable" identity.
-3. **A complementary category.** Position AISP as providing what Agent Skills lack (executable flow + governance + machine-verifiable red lines), while remaining able to include a thin same-folder `SKILL.md` sidecar bridge to interoperate.
+The earlier core-optional discovery projection is replaced by mandatory M7 and an executor-only bootstrap. This tightens conformance despite the deliberately retained V1.0.0 marker; it is not equivalent old/new validation.
 
 ## Decision
 
-**AISP is complementary to Agent Skills, not a replacement.** The public framing is: *"AISP does not replace Agent Skills; it provides executable, verifiable, governable skills alongside them, and can include a thin `SKILL.md` sidecar to interoperate with Agent Skills platforms."*
+**AISP is an executable, governable skill package built on AISOP and bridged to agent platforms through the Agent Skills standard.**
 
-1. AISP absorbs the *spirit* of Agent Skills (reusable capability, triggering, progressive disclosure, resources) and discards its *form* (the `SKILL.md` body). The executable subject is `aisp.aisop.json`.
-2. A native AISP skill does not require `SKILL.md` for core conformance. Authoring and public-distribution workflows SHOULD add a thin same-folder `SKILL.md` sidecar bridge by default unless the author explicitly opts out; it only guides loading and running `aisp.aisop.json`, never copies the logic, and deleting it leaves the skill working under an AISP/AISOP runtime.
-3. The bridge's `name` is `id` minus `_aisp` / hyphenated, lowercase, and MUST NOT contain "anthropic" or "claude"; its `description` is projected from `invocation` (≤ 1024, injection-safe).
-4. Branding carries zero "Claude" / "Anthropic"; a trademark search precedes public release (the specification is not legal advice).
+1. `aisp.aisop.json` remains the sole business definition.
+2. Every conformant package MUST include a generated same-folder `SKILL.md` compatibility interface. There is no opt-out.
+3. M7 checks existence, derived name/description/license and the exact fixed bootstrap, allowing five launch strings plus the frozen executor version policy. Core and bridge share one read-only, offline check without a core callback. The version policy does not bind AISP to SoulRun or certify runtime behavior.
+4. Execution MUST use a conforming AISP/AISOP executor, SoulRun by default but not vendor-bound. Without one, stop; hosts must not improvise execution or continuation. Executor-mediated reads and user-requested review remain permitted.
+5. The fixed bootstrap is not a second independently distributed skill and does not copy business logic. Its own Apache-2.0 license does not override the business license.
+6. Generated markers, string-format checks and hashes do not confer trust, executor certification or proof of execution. Installation consent before an executor exists relies on the host's controls.
+7. Keep neutral derived names (no `anthropic`/`claude`) and existing frontmatter/path safety rules.
 
 ## Consequences
 
-### What becomes easier
+- Standard discovery and executor handoff are present in all conformant packages; missing, old or drifted interfaces fail M7, with EC7 retained only as a legacy mapping.
+- Existing generated interfaces need explicit migration. Damaged/unknown files are rejected rather than silently overwritten or reset to defaults.
+- Five launch strings and one frozen version policy remain configurable inside the existing interface. One version condition determines direct execution or a consented, rechecked installation; no registry, extra config or template framework is introduced.
+- A successful static check does not establish runtime behavior, supported host operation or completed execution.
+- The default scope supports one active session, including waiting gates; concurrent conversations require host isolation or separate project/runtime directories.
+- Distributed creator copies must be checked against the intended interface revision before publication; this repository does not certify external copies. The protocol candidate cannot be published on the basis of static tool success alone.
 
-- **Honest, defensible positioning**: "complementary + core-optional sidecar generated by default" is true and low-conflict, versus a "replacement" claim that the facts do not support.
-- **Interoperability**: the default `SKILL.md` bridge lets AISP skills be discovered on existing Agent Skills platforms.
-- **Clear differentiation**: AISP's value (executable + governable + machine-verifiable red lines) is stated without disparaging the neighbor.
+## Related Decisions
 
-### What becomes harder
-
-- **Native-only cost**: a native AISP skill needs an AISP/AISOP runtime to run; direct runnability on existing platforms requires the sidecar bridge. This is stated plainly as an honest boundary (§24).
-- **Two artifacts to keep aligned**: when a bridge is present, its `description` must stay consistent with the contract's `invocation` as the skill evolves.
-- **Naming vigilance**: "skill" is a generic term, but branding must remain free of "Claude" / "Anthropic", and a trademark search is required before release.
-
-### Relationship to other ADRs
-
-- **ADR-001**: complementarity is a natural consequence of building on AISOP rather than competing at the prose-skill layer.
-- **ADR-004**: the differentiator that justifies a separate category is the machine-verifiable `enforced_by → sys.*` binding, which prose skills lack.
+- ADR-001: AISP packages programs built on AISOP.
+- ADR-004: hard guarantees rely on real `enforced_by -> sys.*` mechanisms, not prose.
+- Specification §20: canonical rendering, launch strings, frozen version policy and controlled migration.
 
 ---
 

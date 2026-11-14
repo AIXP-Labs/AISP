@@ -2,21 +2,26 @@
 """AISP conformance validator.
 
 Zero-dependency reference checker for AISP skill packages. It focuses on static
-skill/package conformance (M1-M6) plus the static parts of the SE/EC rule sets.
+skill/package conformance (M1-M7) plus the static parts of the SE/EC rule sets.
 Runtime-only rules (R1-R7) require execution traces and are reported as not run.
 """
 from __future__ import annotations
 
 import argparse
 import ast
+import getopt
 import json
 import re
+import shlex
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 try:
+    from .aisp_hash import SKILL_ID_RE, load_skill as _load_skill_document, strict_json_loads
     from .aisp_check_runtime_trace import check_trace as _check_runtime_trace
+    from .aisp_check_runtime_trace import trace_shape_errors as _trace_shape_errors
+    from .aisp_skill_md import validate_skill_md as _validate_skill_md
     from .aisp_readme import (
         GENERATED_MARKER,
         GENERATOR_MARKER,
@@ -25,7 +30,10 @@ try:
         render_readme as _render_readme,
     )
 except ImportError:  # pragma: no cover - script execution path
+    from aisp_hash import SKILL_ID_RE, load_skill as _load_skill_document, strict_json_loads
     from aisp_check_runtime_trace import check_trace as _check_runtime_trace
+    from aisp_check_runtime_trace import trace_shape_errors as _trace_shape_errors
+    from aisp_skill_md import validate_skill_md as _validate_skill_md
     from aisp_readme import (
         GENERATED_MARKER,
         GENERATOR_MARKER,
@@ -50,6 +58,7 @@ REMOTE_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*://")
 PROFILE_RE = re.compile(r"^aisp\.skill\.v[0-9]+$")
 ENFORCED_BY_RE = re.compile(r"^([A-Za-z0-9_]+)\.([A-Za-z0-9_]+):(sys\.[A-Za-z0-9_.]+)$")
 MERMAID_EDGE_RE = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)\s*(?:\[[^\]]*\]|\(\([^)]*\)\)|\([^)]*\))?\s*[-.=]*>\s*([A-Za-z_][A-Za-z0-9_]*)")
+_JSON_READ_ERROR = object()
 
 
 @dataclass
@@ -85,6 +94,7 @@ class ToolEvidence:
     runtime_events: list[dict[str, Any]] | None = None
     capability_modes: dict[str, str] | None = None
     capability_has_provenance: bool = False
+    capability_provided: bool = False
 
 
 class Reporter:
@@ -108,12 +118,12 @@ def _path(path: Path | str | None) -> str | None:
     return str(path).replace("\\", "/") if path is not None else None
 
 
-def _load_json(path: Path, reporter: Reporter, rule_id: str = "M1") -> Any | None:
+def _load_json(path: Path, reporter: Reporter, rule_id: str = "M1") -> Any:
     try:
-        return json.loads(path.read_text(encoding="utf-8-sig"))
+        return strict_json_loads(path.read_text(encoding="utf-8-sig"))
     except Exception as exc:  # noqa: BLE001
         reporter.fail("AISP_E_M1_JSON", rule_id, f"Invalid JSON: {exc}", path, "Fix JSON syntax.")
-        return None
+        return _JSON_READ_ERROR
 
 
 def _edges(spec: Any) -> list[str]:
@@ -192,13 +202,9 @@ def _step_count(spec: dict[str, Any]) -> int:
 
 def _extract_call_paths(step: str, call_name: str) -> list[str]:
     paths: list[str] = []
-    marker = call_name + "("
-    start = 0
-    while True:
-        idx = step.find(marker, start)
-        if idx < 0:
-            break
-        arg_start = idx + len(marker)
+    marker = re.compile(r"(?<![\w.])" + re.escape(call_name) + r"\s*\(")
+    for match in marker.finditer(step):
+        arg_start = match.end()
         while arg_start < len(step) and step[arg_start].isspace():
             arg_start += 1
         if arg_start < len(step) and step[arg_start] in {"'", '"'}:
@@ -218,23 +224,54 @@ def _extract_call_paths(step: str, call_name: str) -> list[str]:
                 if ch != "\\":
                     escaped = False
                 arg_end += 1
-        start = idx + len(marker)
     return paths
+
+
+def _command_script(parts: list[str]) -> str | None:
+    if not parts:
+        return None
+    executable = PurePosixPath(parts[0].replace("\\", "/")).name.lower()
+    if not re.fullmatch(r"python(?:\d+(?:\.\d+)*)?(?:\.exe)?|py(?:\.exe)?", executable):
+        if executable in {"bash", "sh"} and len(parts) > 1 and not parts[1].startswith("-"):
+            return parts[1]
+        # An arbitrary tool's .py argument can be data, not executed code.
+        return parts[0] if "/" in parts[0] or "\\" in parts[0] or parts[0].endswith(".py") else None
+    arguments = parts[1:]
+    if executable in {"py", "py.exe"} and arguments and re.fullmatch(r"-3(?:\.\d+)?(?:-(?:32|64))?", arguments[0]):
+        arguments = arguments[1:]
+    try:
+        options, operands = getopt.getopt(arguments, "bBdEhiIOPqRsSuvVx?c:m:W:X:", [
+            "check-hash-based-pycs=", "help", "help-env", "help-xoptions", "help-all", "version",
+        ])
+    except getopt.GetoptError:
+        return None  # Unsupported command syntax is not certified by this check.
+    if any(option in {"-c", "-m", "-h", "-?", "-V", "--help", "--help-env", "--help-xoptions", "--help-all", "--version"}
+           for option, _value in options):
+        return None
+    return operands[0] if operands and operands[0] != "-" else None
 
 
 def _extract_sys_run_scripts(step: str) -> list[str]:
     scripts: list[str] = []
-    for command in _extract_call_paths(step, "sys.run"):
-        parts = command.split()
-        for part in parts:
-            if part.endswith(".py") or "/" in part or "\\" in part:
-                scripts.append(part.replace("\\", "/"))
-                break
+    for call in ("sys.run", "sys.run.bg"):
+        for command in _extract_call_paths(step, call):
+            try:
+                # Non-POSIX tokenization preserves Windows path separators.
+                parts = shlex.split(command, posix=False)
+            except ValueError:
+                continue  # Unsupported/malformed commands still need runtime checks.
+            parts = [
+                part[1:-1] if len(part) >= 2 and part[0] == part[-1] and part[0] in "\"'" else part
+                for part in parts
+            ]
+            script = _command_script(parts)
+            if script is not None:
+                scripts.append(script.replace("\\", "/"))
     return scripts
 
 
 def _normalize_rel(path: str) -> str:
-    return path.replace("\\", "/").lstrip("./")
+    return PurePosixPath(path.replace("\\", "/")).as_posix()
 
 
 def _safe_resolve(base: Path, rel: str) -> Path:
@@ -268,13 +305,18 @@ def validate_skill(
     if not skill_file.is_file():
         reporter.fail("AISP_E_M2_FILENAME", "M2", "Missing fixed skill file aisp.aisop.json.", skill_dir)
         return _report(skill_dir, reporter)
+    if not _is_inside(skill_file.resolve(), skill_dir):
+        reporter.fail("AISP_E_SE1_PATH", "SE1", "Skill entry file resolves outside its folder.", skill_file)
+        return _report(skill_dir, reporter)
 
     doc = _load_json(skill_file, reporter)
-    if doc is None:
+    if doc is _JSON_READ_ERROR:
         return _report(skill_dir, reporter)
     if not isinstance(doc, list) or len(doc) != 2:
         reporter.fail("AISP_E_M1_SHAPE", "M1", "AISP skill file must be a 2-message array.", skill_file)
         return _report(skill_dir, reporter)
+    if any(not isinstance(message, dict) for message in doc) or [message.get("role") for message in doc] != ["system", "user"]:
+        reporter.fail("AISP_E_M1_ROLES", "M1", "Skill messages must have system/user roles in that order.", skill_file)
     _check_skill_readme(skill_dir, strict_readme, reporter)
     _check_bridge_file(skill_dir / "SKILL.md", skill_dir, reporter)
 
@@ -292,8 +334,17 @@ def validate_skill(
     if system.get("axiom_0") != "Human_Sovereignty_and_Wellbeing":
         reporter.fail("AISP_E_M1_AXIOM", "M1", 'system.content.axiom_0 must be "Human_Sovereignty_and_Wellbeing".', skill_file)
     for field in ("id", "name", "version", "flow_format"):
-        if not system.get(field):
+        if not isinstance(system.get(field), str) or not system[field].strip():
             reporter.fail("AISP_E_M1_FIELD", "M1", f"Missing required system.content.{field}.", skill_file)
+    if isinstance(system.get("flow_format"), str) and system["flow_format"] not in ("mermaid", "jsonflow", "hybrid"):
+        reporter.fail("AISP_E_M1_FIELD", "M1", "flow_format must be mermaid, jsonflow or hybrid.", skill_file)
+    for field in ("summary", "description", "license", "system_prompt"):
+        if field in system and not isinstance(system[field], str):
+            reporter.fail("AISP_E_M1_FIELD", "M1", f"system.content.{field} must be a string when present.", skill_file)
+    if "params" in system and not isinstance(system["params"], dict):
+        reporter.fail("AISP_E_M1_FIELD", "M1", "system.content.params must be an object when present.", skill_file)
+    if "user_input" in user and not isinstance(user["user_input"], str):
+        reporter.fail("AISP_E_M1_FIELD", "M1", "user.content.user_input must be a string when present.", skill_file)
     if system.get("loading_mode") != REQUIRED_LOADING_MODE:
         reporter.fail(
             "AISP_E_M1_LOADING_MODE",
@@ -302,8 +353,13 @@ def validate_skill(
             skill_file,
             'Set system.content.loading_mode to "node".',
         )
-    if not system.get("license"):
-        reporter.warn("AISP_W_M1_LICENSE", "M1", "license SHOULD be present; default is Apache-2.0.", skill_file)
+    license_value = system.get("license")
+    if "license" not in system or (isinstance(license_value, str) and not license_value.strip()):
+        reporter.warn("AISP_W_M1_LICENSE", "M1", "license SHOULD be present and non-blank; default is Apache-2.0.", skill_file)
+    if "tools" in system and (not isinstance(system["tools"], list) or any(
+        not isinstance(tool, str) or not tool.strip() for tool in system["tools"]
+    )):
+        reporter.fail("AISP_E_M1_FIELD", "M1", "system.content.tools must be an array of non-empty strings.", skill_file)
 
     if system.get("id") != skill_dir.name:
         reporter.fail("AISP_E_M2_ID_MISMATCH", "M2", "system.content.id must equal the skill folder name.", skill_file)
@@ -338,13 +394,25 @@ def validate_skill(
         reporter.fail("AISP_E_M3_INVOCATION", "M3", "aisp_contract.invocation is required.", skill_file)
     else:
         for field in ("when_to_use", "when_not_to_use"):
-            if not isinstance(invocation.get(field), list) or not invocation.get(field):
+            values = invocation.get(field)
+            if not isinstance(values, list) or not values or any(not isinstance(value, str) for value in values):
                 reporter.fail("AISP_E_M3_INVOCATION", "M3", f"invocation.{field} must be a non-empty array.", skill_file)
+        if "mode" in invocation and invocation["mode"] not in ("manual_only", "auto_or_manual", "auto_preferred", "internal_only"):
+            reporter.fail("AISP_E_M3_INVOCATION", "M3", "invocation.mode has an invalid value.", skill_file)
+    if "discovery" in contract and not isinstance(contract["discovery"], dict):
+        reporter.fail("AISP_E_M3_CONTRACT", "M3", "discovery must be an object when present.", skill_file)
+    discovery = contract.get("discovery")
+    if isinstance(discovery, dict) and (
+        ("category" in discovery and not isinstance(discovery["category"], str))
+        or ("tags" in discovery and (not isinstance(discovery["tags"], list)
+                                    or any(not isinstance(tag, str) for tag in discovery["tags"])))
+    ):
+        reporter.fail("AISP_E_M3_CONTRACT", "M3", "discovery.category must be a string and tags an array of strings.", skill_file)
     nn_list = contract.get("non_negotiable")
     if not isinstance(nn_list, list) or not nn_list:
         reporter.fail("AISP_E_M3_NON_NEGOTIABLE", "M3", "aisp_contract.non_negotiable must be a non-empty array.", skill_file)
         nn_list = []
-    if "risk_level" in contract and contract.get("risk_level") not in VALID_RISK_LEVELS:
+    if "risk_level" in contract and (not isinstance(contract["risk_level"], str) or contract["risk_level"] not in VALID_RISK_LEVELS):
         reporter.fail("AISP_E_M3_RISK", "M3", "risk_level must be low, medium, high, or critical.", skill_file)
 
     _check_enforced_by(nn_list, functions, aisop, system, reporter, skill_file, tool_evidence, strict_tools)
@@ -386,9 +454,16 @@ def _check_function_execute_modes(functions: dict[str, Any], reporter: Reporter,
                     skill_file,
                     "Represent every execution step as a string instruction.",
                 )
+        if "on_error" in spec:
+            routing = spec["on_error"]
+            if not isinstance(routing, dict) or any(
+                not isinstance(target, str) or not target or target not in functions
+                for target in routing.values()
+            ):
+                reporter.fail("AISP_E_M1_ON_ERROR", "M1", f"Function {node!r} on_error must map error types to existing function nodes.", skill_file)
         mode = spec.get("execute_mode")
         valid_dispatch_intent = True
-        if mode is None:
+        if "execute_mode" not in spec:
             reporter.warn(
                 "AISP_W_M1_EXECUTE_MODE_DEFAULT_INLINE",
                 "M1",
@@ -397,7 +472,7 @@ def _check_function_execute_modes(functions: dict[str, Any], reporter: Reporter,
                 'Declare execute_mode as "inline" or "agent" for auditable dispatch intent.',
             )
             effective_mode = "inline"
-        elif mode not in VALID_EXECUTE_MODES:
+        elif not isinstance(mode, str) or mode not in VALID_EXECUTE_MODES:
             reporter.fail(
                 "AISP_E_M1_EXECUTE_MODE",
                 "M1",
@@ -436,6 +511,9 @@ def _readme_issue(
 
 def _check_skill_readme(skill_dir: Path, strict_readme: bool, reporter: Reporter) -> None:
     readme = skill_dir / "README.md"
+    if readme.is_symlink():
+        _readme_issue(reporter, strict_readme, "DRIFT", "Per-skill README.md must not be a symbolic link.", readme, "Restore a regular generated README.md inside the skill folder.")
+        return
     if not readme.is_file():
         _readme_issue(
             reporter,
@@ -514,34 +592,11 @@ def _frontmatter(text: str) -> dict[str, str]:
 
 
 def _check_bridge_file(bridge: Path, skill_dir: Path, reporter: Reporter) -> None:
-    if not bridge.is_file():
-        reporter.warn(
-            "AISP_W_EC7_BRIDGE_MISSING",
-            "EC7",
-            "SKILL.md sidecar is SHOULD by default for generated/distributed skills, but is not required for core AISP conformance.",
-            bridge,
-            "Add a same-folder SKILL.md sidecar unless the package intentionally opts out of Agent Skills interoperability.",
-        )
-        return
-    text = bridge.read_text(encoding="utf-8-sig")
-    frontmatter = _frontmatter(text)
-    name = frontmatter.get("name", "")
-    if any(forbidden in name.lower() for forbidden in ("anthropic", "claude")):
-        reporter.warn("AISP_W_EC7_BRIDGE", "EC7", "SKILL.md bridge name must not contain anthropic or claude.", bridge)
-    if "aisp.aisop.json" not in text:
-        reporter.warn("AISP_W_EC7_BRIDGE", "EC7", "SKILL.md bridge must guide loading/running aisp.aisop.json.", bridge)
-    if "generated_from_aisp" not in text:
-        reporter.warn("AISP_W_EC7_BRIDGE", "EC7", "SKILL.md bridge should declare generated_from_aisp metadata.", bridge)
-
-    skill_file = skill_dir / "aisp.aisop.json"
-    try:
-        doc = json.loads(skill_file.read_text(encoding="utf-8-sig"))
-        system = doc[0].get("content", {}) if isinstance(doc, list) and doc else {}
-        summary = system.get("summary") if isinstance(system, dict) else None
-    except Exception:  # noqa: BLE001
-        return
-    if isinstance(summary, str) and summary.strip() and summary.strip() not in text:
-        reporter.warn("AISP_W_EC7_BRIDGE_DRIFT", "EC7", "SKILL.md bridge summary differs from aisp.aisop.json.", bridge)
+    issues = _validate_skill_md(skill_dir)
+    for issue in issues:
+        reporter.fail(issue["code"], "M7", issue["message"], bridge)
+    if not issues:
+        reporter.info("AISP_I_M7_SKILL_MD", "M7", "Bootstrap unchanged and format valid; executor not certified. No execution, safety or external trust is proved.", bridge)
 
 
 def _check_graphs(aisop: dict[str, Any], functions: dict[str, Any], reporter: Reporter, skill_file: Path) -> None:
@@ -569,6 +624,16 @@ def _check_graphs(aisop: dict[str, Any], functions: dict[str, Any], reporter: Re
         stack = [next(iter(graph))]
         terminals = set()
         for node, spec in graph.items():
+            if not isinstance(spec, dict):
+                reporter.fail("AISP_E_M1_GRAPH", "M1", f"Graph node {graph_name}.{node} must be an object.", skill_file)
+                continue
+            malformed = (
+                "next" in spec and (not isinstance(spec["next"], list) or any(not isinstance(target, str) for target in spec["next"]))
+            ) or (
+                "branches" in spec and (not isinstance(spec["branches"], dict) or any(not isinstance(target, str) for target in spec["branches"].values()))
+            ) or ("error" in spec and not isinstance(spec["error"], str))
+            if malformed:
+                reporter.fail("AISP_E_M1_EDGE_SHAPE", "M1", f"Graph node {graph_name}.{node} has malformed next/branches/error fields.", skill_file)
             if node not in functions:
                 reporter.fail("AISP_E_M1_NODE_FUNCTION", "M1", f"Graph node {graph_name}.{node} has no matching functions entry.", skill_file)
             edges = _edges(spec)
@@ -604,6 +669,8 @@ def _check_enforced_by(
         if not isinstance(item, dict):
             reporter.fail("AISP_E_M4_GRAMMAR", "M4", f"non_negotiable[{idx}] must be an object.", skill_file)
             continue
+        if not isinstance(item.get("rule"), str) or not item["rule"]:
+            reporter.fail("AISP_E_M4_GRAMMAR", "M4", f"non_negotiable[{idx}].rule must be a non-empty string.", skill_file)
         eb = item.get("enforced_by")
         if eb == "aisop.main":
             if "main" not in aisop:
@@ -626,7 +693,7 @@ def _check_enforced_by(
         value = functions.get(node, {}).get(step) if isinstance(functions.get(node), dict) else None
         if value is None:
             reporter.fail("AISP_E_M4_PHANTOM", "M4", f"enforced_by points to missing function step {node}.{step}.", skill_file)
-        elif not str(value).strip().startswith(mechanism):
+        elif not isinstance(value, str) or not re.match(re.escape(mechanism) + r"\s*\(", value.strip()):
             reporter.fail("AISP_E_M4_NO_MECHANISM", "M4", f"{node}.{step} does not begin with {mechanism}.", skill_file)
 
 
@@ -669,13 +736,13 @@ def _check_tools_hardness(
         return
 
     capability_modes = evidence.capability_modes if evidence and evidence.capability_modes else {}
-    if capability_modes:
+    if capability_modes or (evidence and evidence.capability_provided):
         tool_names = [str(tool) for tool in tools]
         missing = [tool for tool in tool_names if tool not in capability_modes]
         non_hard = [tool for tool in tool_names if capability_modes.get(tool) != "hard"]
         if not missing and not non_hard:
             if evidence and evidence.capability_has_provenance:
-                reporter.info("AISP_I_R6_TOOLS_HARD", "R6", "enforced_by: tools is backed by provenance-bearing hard tool capability evidence.", skill_file)
+                reporter.info("AISP_I_R6_TOOLS_HARD", "R6", "Capability artifact meets the hard-evidence structure; provenance claims are not independently authenticated.", skill_file)
             elif strict_tools:
                 reporter.fail("AISP_E_R6_TOOLS_NOT_HARD", "R6", "Hard tool capability evidence lacks provenance; it is an unverified attestation.", skill_file)
             else:
@@ -697,7 +764,7 @@ def _check_tools_hardness(
 
     if evidence and evidence.runtime_mode == "hard":
         if runtime_trace_conformant and _has_hard_tool_enforcement_event(evidence.runtime_events or [], tools):
-            reporter.info("AISP_I_R6_TOOLS_HARD", "R6", "enforced_by: tools is backed by runtime trace tool-enforcement event evidence.", skill_file)
+            reporter.info("AISP_I_R6_TOOLS_HARD", "R6", "Trace meets the tool-enforcement event criteria; recorded events are not independently authenticated.", skill_file)
         elif strict_tools:
             reporter.fail("AISP_E_R6_TOOLS_NOT_HARD", "R6", "Runtime trace only attests hard tool enforcement at the top level; missing matching tool_enforcement event evidence.", skill_file)
         else:
@@ -738,53 +805,71 @@ def _has_capability_provenance(doc: dict[str, Any]) -> bool:
 
 def _check_resources(contract: dict[str, Any], functions: dict[str, Any], skill_dir: Path, aisp_dir: Path, reporter: Reporter, skill_file: Path) -> dict[str, dict[str, Any]]:
     resources = contract.get("resources", [])
-    if resources is None:
-        resources = []
     if not isinstance(resources, list):
         reporter.fail("AISP_E_M5_RESOURCES", "M5", "resources must be an array when present.", skill_file)
         return {}
 
     by_path: dict[str, dict[str, Any]] = {}
+    binding_modes: dict[tuple[str, Path], str] = {}
     shared_root = aisp_dir / "_shared"
     for idx, resource in enumerate(resources):
         if not isinstance(resource, dict):
             reporter.fail("AISP_E_M5_RESOURCE", "M5", f"resources[{idx}] must be an object.", skill_file)
             continue
         for field in ("id", "path", "kind", "mode"):
-            if not resource.get(field):
+            if not isinstance(resource.get(field), str) or not resource[field]:
                 reporter.fail("AISP_E_M5_RESOURCE", "M5", f"resources[{idx}] missing required field {field}.", skill_file)
+        if not isinstance(resource.get("path"), str) or not resource["path"]:
+            continue
         raw_path = str(resource.get("path", ""))
         mode = resource.get("mode")
         scope = resource.get("scope", "skill")
-        if mode not in VALID_RESOURCE_MODES:
+        if not isinstance(mode, str) or mode not in VALID_RESOURCE_MODES:
             reporter.fail("AISP_E_M5_MODE", "M5", f"Resource {raw_path!r} has invalid mode {mode!r}.", skill_file)
-        if scope not in VALID_RESOURCE_SCOPES:
+            continue
+        if not isinstance(scope, str) or scope not in VALID_RESOURCE_SCOPES:
             reporter.fail("AISP_E_M5_SCOPE", "M5", f"Resource {raw_path!r} has invalid scope {scope!r}.", skill_file)
             continue
         if resource.get("kind") == "script" and not resource.get("requires_tools"):
             reporter.warn("AISP_W_M5_NO_REQUIRES_TOOLS", "M5", f"Script resource {raw_path!r} should declare requires_tools.", skill_file)
-        if resource.get("sha256") and not re.fullmatch(r"[a-fA-F0-9]{64}", str(resource.get("sha256"))):
+        if "sha256" in resource and (not isinstance(resource["sha256"], str) or not re.fullmatch(r"[a-fA-F0-9]{64}", resource["sha256"])):
             reporter.fail("AISP_E_M5_SHA256", "M5", f"Resource {raw_path!r} has invalid sha256.", skill_file)
+        if "requires_tools" in resource and (not isinstance(resource["requires_tools"], list) or any(
+            not isinstance(tool, str) for tool in resource["requires_tools"]
+        )):
+            reporter.fail("AISP_E_M5_RESOURCE", "M5", f"Resource {raw_path!r} requires_tools must be an array of strings.", skill_file)
         if REMOTE_RE.match(raw_path):
             reporter.fail("AISP_E_SE2_REMOTE", "SE2", f"Remote resource {raw_path!r} is disabled by default and must be confirmation-gated.", skill_file)
             continue
-        rel = Path(raw_path)
-        if rel.is_absolute() or ".." in rel.parts:
+        rel = Path(raw_path.replace("\\", "/"))
+        if raw_path.startswith(("\\", "/")) or rel.is_absolute() or re.match(r"^[A-Za-z]:", raw_path) or ".." in rel.parts:
             reporter.fail("AISP_E_M5_PATH_ESCAPE", "M5", f"Resource path {raw_path!r} is absolute or escapes the package.", skill_file)
             continue
-        if scope == "shared":
-            resolved = _safe_resolve(shared_root, raw_path)
-            if not _is_inside(resolved, shared_root.resolve()):
-                reporter.fail("AISP_E_SE1_PATH", "SE1", f"Shared resource {raw_path!r} escapes _shared.", skill_file)
-        else:
-            resolved = _safe_resolve(skill_dir, raw_path)
-            if not _is_inside(resolved, skill_dir):
-                reporter.fail("AISP_E_SE1_PATH", "SE1", f"Resource {raw_path!r} escapes the skill folder.", skill_file)
-        if not resolved.exists():
-            reporter.warn("AISP_W_M5_MISSING_RESOURCE", "M5", f"Declared resource {raw_path!r} does not exist.", skill_file)
+        try:
+            base = shared_root.resolve() if scope == "shared" else skill_dir
+            if scope == "shared" and not _is_inside(base, aisp_dir):
+                raise ValueError("_shared root resolves outside the aisp directory")
+            resolved = _safe_resolve(base, str(rel))
+            if not _is_inside(resolved, base):
+                raise ValueError("resource resolves outside its declared scope")
+            if not resolved.exists():
+                reporter.warn("AISP_W_M5_MISSING_RESOURCE", "M5", f"Declared resource {raw_path!r} does not exist.", skill_file)
+        except (OSError, ValueError, RuntimeError) as exc:
+            reporter.fail("AISP_E_SE1_PATH", "SE1", f"Cannot confine resource {raw_path!r}: {exc}.", skill_file)
+            continue
         entry = dict(resource)
         entry["_resolved"] = resolved
-        by_path[_normalize_rel(raw_path)] = entry
+        key = _normalize_rel(raw_path)
+        binding = (key, resolved)
+        previous_mode = binding_modes.get(binding)
+        if previous_mode is not None and previous_mode != mode:
+            reporter.fail("AISP_E_SE3_MODE_GATE", "SE3", f"Conflicting modes for the same normalized resource path {key!r}; aliases must not broaden permissions.", skill_file)
+            continue
+        binding_modes[binding] = mode
+        previous = by_path.get(key)
+        entry["_resolved_paths"] = {resolved, *previous["_resolved_paths"]} if previous else {resolved}
+        entry["_declared_modes"] = {mode, *previous["_declared_modes"]} if previous else {mode}
+        by_path[key] = entry
     return by_path
 
 
@@ -796,6 +881,12 @@ def _check_resource_usage(resources: dict[str, dict[str, Any]], functions: dict[
             if not resource:
                 reporter.warn("AISP_W_M5_UNDECLARED_USE", "M5", f"{node}.{step_key} reads undeclared resource {read_path!r}.", skill_file)
                 continue
+            if len(resource.get("_resolved_paths", ())) > 1:
+                if READ_MODES.isdisjoint(resource.get("_declared_modes", (resource.get("mode"),))):
+                    reporter.fail("AISP_E_SE3_MODE_GATE", "SE3", f"Every scoped declaration for {read_path!r} forbids reading; target ambiguity cannot waive the mode gate.", skill_file)
+                else:
+                    reporter.warn("AISP_W_M5_AMBIGUOUS_USE", "M5", f"{node}.{step_key} reads {read_path!r}, which names distinct skill/shared resources; static mode matching cannot disambiguate the scope.", skill_file)
+                continue
             if resource.get("mode") not in READ_MODES:
                 reporter.fail("AISP_E_SE3_MODE_GATE", "SE3", f"{node}.{step_key} reads execute_only resource {read_path!r}.", skill_file)
         for script_path in _extract_sys_run_scripts(step):
@@ -803,6 +894,12 @@ def _check_resource_usage(resources: dict[str, dict[str, Any]], functions: dict[
             resource = resources.get(norm)
             if not resource:
                 reporter.warn("AISP_W_M5_UNDECLARED_USE", "M5", f"{node}.{step_key} executes undeclared resource {script_path!r}.", skill_file)
+                continue
+            if len(resource.get("_resolved_paths", ())) > 1:
+                if EXEC_MODES.isdisjoint(resource.get("_declared_modes", (resource.get("mode"),))):
+                    reporter.fail("AISP_E_SE3_MODE_GATE", "SE3", f"Every scoped declaration for {script_path!r} forbids execution; target ambiguity cannot waive the mode gate.", skill_file)
+                else:
+                    reporter.warn("AISP_W_M5_AMBIGUOUS_USE", "M5", f"{node}.{step_key} executes {script_path!r}, which names distinct skill/shared resources; static mode matching cannot disambiguate the scope.", skill_file)
                 continue
             if resource.get("mode") not in EXEC_MODES:
                 reporter.fail("AISP_E_SE3_MODE_GATE", "SE3", f"{node}.{step_key} executes non-executable resource {script_path!r}.", skill_file)
@@ -815,7 +912,8 @@ def _check_self_trust(system: dict[str, Any], contract: dict[str, Any], reporter
 
 
 def _check_undeclared_files(resources: dict[str, dict[str, Any]], skill_dir: Path, reporter: Reporter) -> None:
-    declared = {Path(v["_resolved"]).resolve() for v in resources.values() if v.get("_resolved")}
+    declared = {Path(path).resolve() for entry in resources.values() if entry.get("_resolved")
+                for path in entry.get("_resolved_paths", (entry["_resolved"],))}
     for path in skill_dir.rglob("*"):
         if not path.is_file() or path.name in ROOT_SKIP_NAMES:
             continue
@@ -823,14 +921,47 @@ def _check_undeclared_files(resources: dict[str, dict[str, Any]], skill_dir: Pat
             reporter.warn("AISP_W_M5_UNDECLARED_FILE", "M5", f"File is present but not declared in aisp_contract.resources: {_path(path.relative_to(skill_dir))}.", path)
 
 
+def tool_capabilities_shape_errors(doc: Any) -> list[str]:
+    """Check the bounded published v1 capability shape, not provenance truth."""
+    if not isinstance(doc, dict):
+        return ["tool capabilities must be an object"]
+    errors = []
+    if doc.get("tool_capabilities_version") != "1.0":
+        errors.append("tool_capabilities_version must be 1.0")
+    if "provenance" in doc:
+        provenance = doc["provenance"]
+        if not isinstance(provenance, dict):
+            errors.append("provenance must be an object")
+        else:
+            for field in ("source", "generated_by", "runtime", "registry", "signature"):
+                if field in provenance and (not isinstance(provenance[field], str) or not provenance[field]):
+                    errors.append(f"provenance.{field} must be a non-empty string")
+    tools = doc.get("tools")
+    if not isinstance(tools, dict):
+        return [*errors, "tools must be an object"]
+    for name, spec in tools.items():
+        if not isinstance(spec, dict):
+            errors.append(f"tools.{name} must be an object")
+            continue
+        if spec.get("risk_level") not in ("low", "medium", "high", "critical"):
+            errors.append(f"tools.{name}.risk_level has an invalid or missing value")
+        if spec.get("enforcement") not in ("hard", "advisory", "unknown"):
+            errors.append(f"tools.{name}.enforcement has an invalid or missing value")
+        for field in ("capabilities", "forbidden_capabilities"):
+            if field in spec and (not isinstance(spec[field], list) or any(not isinstance(value, str) for value in spec[field])):
+                errors.append(f"tools.{name}.{field} must be an array of strings")
+    return errors
+
+
 def _load_tool_evidence(runtime_trace: Path | None = None, tool_capabilities: Path | None = None) -> ToolEvidence | None:
     if not runtime_trace and not tool_capabilities:
         return None
     evidence = ToolEvidence(capability_modes={})
     if runtime_trace:
-        doc = json.loads(runtime_trace.read_text(encoding="utf-8-sig"))
-        if not isinstance(doc, dict):
-            raise ValueError(f"runtime trace must be a JSON object: {runtime_trace}")
+        doc = strict_json_loads(runtime_trace.read_text(encoding="utf-8-sig"))
+        errors = _trace_shape_errors(doc)
+        if errors:
+            raise ValueError("Invalid runtime trace shape: " + "; ".join(errors))
         evidence.runtime_path = runtime_trace
         mode = doc.get("tool_enforcement")
         if mode in {"hard", "advisory"}:
@@ -840,17 +971,14 @@ def _load_tool_evidence(runtime_trace: Path | None = None, tool_capabilities: Pa
         evidence.runtime_skill_id = doc.get("skill_id") if isinstance(doc.get("skill_id"), str) else None
         evidence.runtime_events = [event for event in doc.get("events", []) if isinstance(event, dict)]
     if tool_capabilities:
-        doc = json.loads(tool_capabilities.read_text(encoding="utf-8-sig"))
-        if not isinstance(doc, dict):
-            raise ValueError(f"tool capabilities must be a JSON object: {tool_capabilities}")
+        doc = strict_json_loads(tool_capabilities.read_text(encoding="utf-8-sig"))
+        errors = tool_capabilities_shape_errors(doc)
+        if errors:
+            raise ValueError("Invalid tool capabilities shape: " + "; ".join(errors))
+        evidence.capability_provided = True
         evidence.capability_has_provenance = _has_capability_provenance(doc)
-        tools = doc.get("tools", {})
-        if not isinstance(tools, dict):
-            raise ValueError(f"tool capabilities tools must be an object: {tool_capabilities}")
         evidence.capability_modes = {
-            str(name): str(spec.get("enforcement", "unknown"))
-            for name, spec in tools.items()
-            if isinstance(spec, dict)
+            name: spec["enforcement"] for name, spec in doc["tools"].items()
         }
     return evidence
 
@@ -869,9 +997,14 @@ def validate_aisp_dir(
         reporter.warn("AISP_W_EC3_SHARED", "EC3", "_shared/ must not be a skill folder.", aisp_dir / "_shared")
     _check_discovery_script(aisp_dir / "aisp_list.py", reporter)
 
-    skill_paths = [path.parent for path in sorted(aisp_dir.glob("*_aisp/aisp.aisop.json"))]
-    if len(skill_paths) == 1:
-        _check_bridge_file(aisp_dir.parent / "SKILL.md", skill_paths[0], reporter)
+    skill_paths = []
+    for path in sorted(aisp_dir.glob("*_aisp")):
+        if not path.is_dir():
+            continue
+        if not _is_inside(path.resolve(), aisp_dir):
+            reporter.fail("AISP_E_EC2_INDEX", "EC2", "Skill folder resolves outside aisp/.", path)
+            continue
+        skill_paths.append(path)
     skill_reports = [
         validate_skill(path, aisp_dir, tool_evidence, strict_tools, strict_readme)
         for path in skill_paths
@@ -898,20 +1031,22 @@ def _result_from_dict(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def _check_discovery_script(script: Path, reporter: Reporter) -> None:
-    if not script.exists():
+    if not script.exists() and not script.is_symlink():
         reporter.warn("AISP_W_EC1_NO_SCRIPT", "EC1", "aisp_list.py is SHOULD but missing.", script.parent)
         return
-    text = script.read_text(encoding="utf-8-sig")
     try:
+        if not script.is_file() or not _is_inside(script.resolve(), script.parent.resolve()):
+            raise ValueError("discovery script must be a file confined to the aisp directory")
+        text = script.read_text(encoding="utf-8-sig")
         tree = ast.parse(text)
-    except SyntaxError as exc:
-        reporter.fail("AISP_E_SE5_SCRIPT", "SE5", f"aisp_list.py is not valid Python: {exc}.", script)
+    except (OSError, ValueError, RuntimeError, SyntaxError) as exc:
+        reporter.fail("AISP_E_SE5_SCRIPT", "SE5", f"Cannot inspect aisp_list.py: {exc}.", script)
         return
     bad_imports: list[str] = []
     bad_calls: list[str] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            bad_imports.extend(alias.name for alias in node.names if alias.name.split(".")[0] not in {"json", "sys", "pathlib"})
+            bad_imports.extend(alias.name for alias in node.names if alias.name.split(".")[0] not in {"json", "sys", "pathlib", "re"})
         elif isinstance(node, ast.ImportFrom):
             mod = (node.module or "").split(".")[0]
             if mod not in {"pathlib"}:
@@ -950,23 +1085,61 @@ def _write_target_looks_like_index(func: ast.AST) -> bool:
 
 def _check_index(aisp_dir: Path, skill_reports: list[dict[str, Any]], reporter: Reporter) -> None:
     index_path = aisp_dir / "aisp_list.json"
-    if not index_path.exists():
+    if not index_path.exists() and not index_path.is_symlink():
         reporter.warn("AISP_W_EC1_NO_INDEX", "EC1", "aisp_list.json is SHOULD but missing.", aisp_dir)
+        return
+    if index_path.is_symlink() or not index_path.is_file():
+        reporter.fail("AISP_E_EC2_INDEX", "EC2", "aisp_list.json must be a regular non-symlink file.", index_path)
         return
     doc = _load_json(index_path, reporter, "EC2")
     if not isinstance(doc, dict):
         reporter.fail("AISP_E_EC2_INDEX", "EC2", "aisp_list.json must be an object.", index_path)
         return
-    rows = {row.get("id"): row for row in doc.get("skills", []) if isinstance(row, dict)}
+    entries = doc.get("skills")
+    if not isinstance(entries, list) or any(
+        not isinstance(row, dict) or not isinstance(row.get("id"), str)
+        or not SKILL_ID_RE.fullmatch(row["id"]) for row in entries
+    ):
+        reporter.fail("AISP_E_EC2_INDEX", "EC2", "Index skills must be an array of objects with valid skill ids.", index_path)
+        return
+    rows = {row["id"]: row for row in entries}
+    if len(rows) != len(entries):
+        reporter.fail("AISP_E_EC2_INDEX", "EC2", "Index contains duplicate skill ids.", index_path)
     actual = {report["id"]: report for report in skill_reports if report.get("id")}
     for skill_id in sorted(set(actual) - set(rows)):
         reporter.warn("AISP_W_EC2_INDEX_DRIFT", "EC2", f"Skill {skill_id} is missing from aisp_list.json.", index_path)
     for skill_id in sorted(set(rows) - set(actual)):
         reporter.warn("AISP_W_EC2_INDEX_DRIFT", "EC2", f"Index row {skill_id} has no matching skill folder.", index_path)
     for skill_id in sorted(set(actual) & set(rows)):
-        expected = str((Path(actual[skill_id]["target"]) / "aisp.aisop.json").resolve().relative_to(aisp_dir.parent)).replace("\\", "/")
+        program = Path(actual[skill_id]["target"]) / "aisp.aisop.json"
+        expected = program.relative_to(aisp_dir.parent).as_posix()
         if rows[skill_id].get("path") != expected:
             reporter.warn("AISP_W_EC2_INDEX_DRIFT", "EC2", f"Index path for {skill_id} differs from folder truth.", index_path)
+        if not actual[skill_id].get("conformant"):
+            continue
+        try:
+            _, skill_doc = _load_skill_document(program)
+        except (OSError, ValueError, RuntimeError) as exc:
+            reporter.fail("AISP_E_EC2_INDEX", "EC2", f"Cannot inspect index source for {skill_id}: {exc}", index_path)
+            continue
+        system = skill_doc[0]["content"]
+        contract = skill_doc[1]["content"]["aisp_contract"]
+        discovery = contract.get("discovery", {})
+        invocation = contract.get("invocation", {})
+        if not isinstance(discovery, dict) or not isinstance(invocation, dict):
+            reporter.fail("AISP_E_EC2_INDEX", "EC2", f"Index source for {skill_id} changed to a malformed contract.", index_path)
+            continue
+        metadata = {
+            "name": system.get("name"),
+            "summary": system.get("summary") or system.get("description", ""),
+            "category": discovery.get("category"),
+            "tags": discovery.get("tags", []),
+            "when_to_use": invocation.get("when_to_use", []),
+            "risk_level": contract.get("risk_level"),
+        }
+        drift = [key for key, value in metadata.items() if rows[skill_id].get(key) != value]
+        if drift:
+            reporter.warn("AISP_W_EC2_INDEX_DRIFT", "EC2", f"Index metadata for {skill_id} differs from folder truth: {', '.join(drift)}.", index_path)
 
 
 def _report(skill_dir: Path, reporter: Reporter) -> dict[str, Any]:
@@ -1002,9 +1175,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Validate AISP skills and aisp/ directories.")
     parser.add_argument("paths", nargs="+", help="Skill folder, aisp.aisop.json, or aisp/ directory paths.")
     parser.add_argument("--json", action="store_true", help="Emit JSON report.")
-    parser.add_argument("--warnings-fail", action="store_true", help="Treat warnings as failures.")
-    parser.add_argument("--runtime-trace", help="Optional runtime trace JSON used to prove hard tool enforcement for enforced_by: tools.")
-    parser.add_argument("--tool-capabilities", help="Optional tool capability JSON used to prove hard tool enforcement for enforced_by: tools.")
+    parser.add_argument("--warnings-fail", action="store_true", help="Return exit code 1 when warnings remain; keep report severity and conformance unchanged.")
+    parser.add_argument("--runtime-trace", help="Optional runtime trace JSON checked against tool-enforcement evidence criteria; event origins are not authenticated.")
+    parser.add_argument("--tool-capabilities", help="Optional tool capability JSON checked against tool-enforcement evidence criteria; provenance is not authenticated.")
     parser.add_argument("--strict-tools", action="store_true", help="Fail enforced_by: tools unless hard runtime/tool capability evidence is provided.")
     parser.add_argument("--strict-readme", action="store_true", help="Fail missing/manual/drifted/bad-marker per-skill README.md instead of warning.")
     args = parser.parse_args(argv)
@@ -1027,14 +1200,17 @@ def main(argv: list[str] | None = None) -> int:
     reports = []
     for raw in args.paths:
         path = Path(raw)
-        if path.is_file() and path.name == "aisp.aisop.json":
-            reports.append(validate_skill(path.parent, tool_evidence=tool_evidence, strict_tools=args.strict_tools, strict_readme=args.strict_readme))
-        elif path.is_dir() and (path / "aisp.aisop.json").is_file():
-            reports.append(validate_skill(path, tool_evidence=tool_evidence, strict_tools=args.strict_tools, strict_readme=args.strict_readme))
-        elif path.is_dir():
-            reports.append(validate_aisp_dir(path, tool_evidence, args.strict_tools, args.strict_readme))
-        else:
-            reports.append(_summary_report(path, [Result("AISP_E_INPUT", "INPUT", "FAIL", False, "Path does not exist or is not an AISP target.", _path(path))]))
+        try:
+            if path.is_file() and path.name == "aisp.aisop.json":
+                reports.append(validate_skill(path.parent, tool_evidence=tool_evidence, strict_tools=args.strict_tools, strict_readme=args.strict_readme))
+            elif path.is_dir() and (path / "aisp.aisop.json").is_file():
+                reports.append(validate_skill(path, tool_evidence=tool_evidence, strict_tools=args.strict_tools, strict_readme=args.strict_readme))
+            elif path.is_dir():
+                reports.append(validate_aisp_dir(path, tool_evidence, args.strict_tools, args.strict_readme))
+            else:
+                reports.append(_summary_report(path, [Result("AISP_E_INPUT", "INPUT", "FAIL", False, "Path does not exist or is not an AISP target.", _path(path))]))
+        except (OSError, ValueError, RuntimeError) as exc:
+            reports.append(_summary_report(path, [Result("AISP_E_INPUT", "INPUT", "FAIL", False, f"Cannot inspect target: {exc}", _path(path))]))
 
     failed = any(not report["conformant"] for report in reports)
     warned = any(report.get("warning_count", 0) for report in reports)

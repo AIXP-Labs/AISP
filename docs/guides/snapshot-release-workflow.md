@@ -33,9 +33,12 @@ If a new reference tool is added, also update:
 
 ## Working-Tree Snapshot
 
-Before the final release commit exists, snapshot metadata SHOULD say
-`snapshot_state: working_tree_uncommitted`. This is an honesty marker: the
-snapshot reflects the local working tree, not an immutable published commit.
+Before committed source provenance has been verified, use an honest working-tree
+state such as the current `working_tree_revision` (older snapshots may use
+`working_tree_uncommitted`) and identify unverified source as
+`uncommitted-working-tree`. Match the README and manifest metadata. These markers
+mean local working-tree content, not an immutable published commit. Do not query
+Git or refresh upstream sources without authorization.
 
 Run the normal gate while the snapshot is in that state:
 
@@ -65,10 +68,13 @@ working-tree snapshot is still carrying intentional uncommitted edits.
 
 ## Final Release Snapshot
 
-After the final commit is created, refresh snapshot metadata to the final commit
-hash before publishing. The snapshot state can then move from
-`working_tree_uncommitted` to a release-state value chosen by the maintainer,
-for example `committed`.
+With separate publication/source-verification authorization, identify the source
+commit whose source-file bytes were actually copied and verified. Record that
+commit, not an assumed final packaging commit. A later packaging commit can carry
+the snapshot metadata and regenerated documentation; a tracked manifest cannot
+contain its own final commit hash. Only after source verification may the state
+be changed to a maintainer-chosen committed-source state. An unavailable source
+commit must not be replaced by an invented hash or a claim of verification.
 
 Required checks after metadata refresh:
 

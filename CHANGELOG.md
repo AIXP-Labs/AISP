@@ -6,6 +6,50 @@ The format follows [Keep a Changelog](https://keepachangelog.com/), and the prot
 
 ---
 
+## V1.0.0 — 2026-11-13 revision
+
+### Changes
+
+- Require a generated same-folder SKILL.md compatibility interface (M7), including for runtime-native packages. The fixed bootstrap delegates business execution to a conforming AISP/AISOP executor; SoulRun is the replaceable default, not a protocol dependency. Missing, legacy, malformed or drifted interfaces fail conformance. This tightens earlier V1.0.0 behavior; old and new interfaces are not equivalent.
+- Add a frozen executor version policy supporting stable numeric >=X.Y.Z floors and ==X.Y.Z pins. Compatible installations run without an installation question; proven absence or mismatch requires consent, installation and a successful recheck. Probe errors stop. Existing explicit constraints take precedence, and ordinary regeneration/checking preserves the frozen policy without querying latest.
+- Reject non-program JSON values such as null instead of reporting a successful empty result. Tighten ambiguous JSON, field types, mechanism references, resource confinement and mode matching, discovery/index handling, and bounded runtime-evidence shape/consistency checks. Preserve conditional tool-enforcement warnings; checks do not independently authenticate runtime events or provenance.
+- Registry manifest 1.1 adds canonical full-program program_sha256 and binds it into package_sha256, covering business-function edits that legacy 1.0 hashes did not bind. Legacy manifests remain readable. Neither version covers every archive file or automatically authenticates the SKILL.md executor configuration.
+- Make generated-file writes individually atomic, reject unsafe output aliases/links, and report partial batch failures honestly. Update the examples to supported assertion expressions and align documentation and embedded references. The yijing and stock examples now require exact disclaimer wording; their package versions remain 1.0.0. The native Creator example is 1.0.1; protocol/tools remain 1.0.0 and no runtime or engine is upgraded by these changes.
+- Keep installed reference tools standard-library-only. Packaging uses the declared build-only setuptools floor; source-archive filtering and wheel/sdist regressions cover selected stale-list/private-file cases. These are bounded safeguards, not complete secret detection. This release does not publish aisp-protocol-tools to PyPI.
+
+### Migration
+
+1. Back up the program, resources and existing interface. Inspect SKILL.md before migration. Preview recognized generated legacy interfaces with --print and explicitly migrate with --write or --write-all; do not treat every failed check as a recognized legacy file.
+2. Preserve valid launch commands and stored version policies. First generation or a recognized policy-free default migration resolves the official latest stable SoulRun release into a concrete lower bound; an explicit --executor-version-requirement takes precedence. Other executors require their own explicit constraint. Failed resolution stops without a stored/default fallback. Checks never resolve or migrate.
+3. Damaged JSON/configuration, unknown handwritten content and fixed-body drift require explicit review, not silent defaults or automatic deletion. Only after confirming a stale old generated projection has no handwritten content or configuration to preserve may its backed-up SKILL.md be removed and regenerated as first generation.
+4. Complete program/resource/snapshot changes and manifests, then regenerate README.md and SKILL.md. Run interface, core, bridge, README and applicable index checks. Regenerate registry evidence as manifest 1.1; old package hashes are not interchangeable with the new domain. Preserve historical failure records and review warnings rather than presenting them as independent trust or publication approval.
+
+### Known Limitations
+
+- Format, version reports, generated markers, hashes and trace fixtures are not executor certification, safety, external trust or proof of completed execution. Hosts must not bypass the executor; installation consent remains a host responsibility before an executor exists. The default runtime scope supports one active session, including waits.
+- The SKILL.md launch-command placeholder does not specify where the user-message file must be created. A host may write it outside the project. Use an appropriately private working location and review permissions and disposable inputs; this release does not add a message-file location rule or change the template.
+- In the tested Windows Codex sandbox, access to a newly created SoulRun runtime directory remains an executor/environment limitation. The documented 1.0.x workaround pre-creates an empty run directory. A successful run using that workaround does not establish that the default directory path works without it.
+- Existing real-host evidence is scoped to the tested yijing package, hosts, versions and scenarios. Delegated installation consent is not user-per-gate participation, and a stand-in executor tests routing rather than actual skill execution. Other examples, sub-agent dispatch and untested scenarios are not certified by those runs. The yijing example's partial reference data and brief interpretation guide do not establish complete or authoritative source coverage.
+- Copies of these examples and reference tools in other AIXP repositories are updated separately; until updated they may fail the current M7 check.
+- Local validation, archive filtering and CI configuration are bounded checks. No hosted Actions success, complete runtime conformance, or cross-repository release qualification is implied.
+
+### Reference Tool Content Digests
+
+These SHA-256 values identify the reference tools in this revision, not a release signature or external trust proof.
+
+| Tool | SHA-256 |
+|---|---|
+| `tools/aisp_skill_md.py` | `e08af2119133d9a24e141032a15ede041146e3ed2549100931665dfaf1a496f6` |
+| `tools/aisp_validate.py` | `4b783569076ed9c6f8c299fe4b1a2a7dd8d849069eb0b25c493364c0138a7eb8` |
+| `tools/aisp_validate_agent_skill_bridge.py` | `c590b57bce975741fbf740889594feba53d34f95122dd301f91751a4dfa246d0` |
+| `tools/aisp_readme.py` | `78d11506c7c2f4c216ab16e1c7e09e6472ddf760a664c11e93e79dfb56b63254` |
+| `tools/aisp_hash.py` | `ba7f81e74a4801d765e31bdda694c8a45044d4a64ae047e4a56e5e2c99c17a2d` |
+| `tools/aisp_check_runtime_trace.py` | `bc345527d264136fcbb3764e584e296116b1601cec044321a13f7f9fc2b2ad01` |
+| `tools/check_doc_sync.py` | `640ff82017fea3f52dc7e377718edb7cf096e35e45453b861bfb104d06118a69` |
+| `tools/check_markdown_links.py` | `353c3b214c4cb3c2b703b9b4822867621a42dd035a3924bca0f65036a6aa4aee` |
+
+---
+
 ## [1.0.0] — 2026-06-19
 
 The first public AISP specification — the finalized **V1.0.0** release. AISP packages an AISOP program into a discoverable, invocable, governable, distributable skill, building on AISOP only; its lifecycle (generation / evolution / distribution) is AISP-native and tool-agnostic. (The `00`–`12` documents were exploratory/convergence records, superseded by this version.)

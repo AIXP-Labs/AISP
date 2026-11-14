@@ -8,7 +8,7 @@
 
 | Term | Definition |
 |------|------------|
-| **Agent Skills** | The cross-vendor `SKILL.md` standard for prose-described skills. AISP is **complementary** to it (executable + governable), and authoring/distribution tools SHOULD include a thin same-folder `SKILL.md` sidecar by default for interop unless the author opts out. |
+| **Agent Skills** | The cross-vendor interface standard AISP uses to bridge agent platforms. Every conformant AISP package has a generated same-folder `SKILL.md` compatibility interface (M7); business truth remains in `aisp.aisop.json`. |
 | **AIAP** | AI Application Protocol — a sibling protocol in the AIXP family, **not** part of AISP's stack. `aiap.dev`. |
 | **AISOP** | AI Standard Operating Protocol — the execution language a skill body is written in (`.aisop.json`, Mermaid/JSON flow, the `sys.*` family); AISP's only base. `aisop.dev`. |
 | **AISP** | AI Skill Protocol — this protocol; the independent skill-package layer built on AISOP only. `aisp.dev`. |
@@ -20,7 +20,9 @@
 | **Axiom 0** | "Human Sovereignty and Wellbeing." The immutable alignment principle inherited from HSAW; `sys.io.confirm` is forced-blocking. |
 | **Discovery** | The runtime-independent process of finding skills: read the index, run the script, or glob the folders. |
 | **`enforced_by`** | The binding from a `non_negotiable` rule to a real mechanism: `<node>.stepN:<mechanism>` \| `aisop.main` \| `tools`. The step segment must be a numeric execution step such as `step1`; metadata fields such as `step_note` do not count. The policy-as-code layer. |
-| **Sidecar bridge** | A default-generated but core-optional same-folder thin `SKILL.md` that only guides loading/running `aisp.aisop.json`. Never copies logic; deletable without breaking the skill under an AISP/AISOP runtime. |
+| **Agent Skills compatibility interface (bridge interface)** | Required generated same-folder `SKILL.md`; fixed executor-only bootstrap, not copied business logic. M7 checks existence, derived header and fixed body. |
+| **Executor** | A program satisfying AISP/AISOP runtime requirements; SoulRun (`soulrun.dev`) by default, not vendor-bound. Static launch-string and version-policy checks do not certify runtime behavior. |
+| **Executor version policy** | Frozen `>=X.Y.Z` or `==X.Y.Z` requirement with source `latest_stable` or `explicit`. One bootstrap decision checks the configured executor package version; matching versions run directly, absence/mismatch requires a consented installation and matching recheck. |
 | **`flow_format`** | The skill's flow representation: `"mermaid"` \| `"jsonflow"` \| `"hybrid"`. |
 | **Folder-per-skill** | The structural rule: one skill = one self-contained folder `aisp/<id>_aisp/`, zippable / hashable as a registry unit. |
 | **`functions`** | The per-node execution steps (Tier A). Holds role, principles, knowledge, failure handling, and structured output. |
@@ -40,7 +42,7 @@
 | **Skill file** | The `aisp.aisop.json` of a skill. |
 | **Skill folder** | An `aisp/<id>_aisp/` directory. |
 | **Skill package** | The `aisp/<id>_aisp/` folder as a whole — the unit of distribution. |
-| **`sys.*`** | AISOP's deterministic system-call family (`sys.assert`, `sys.io.confirm`, `sys.io.read`, `sys.run`, `sys.llm.json`, `sys.code.exec`, …) handled by the runtime, not by LLM reasoning. The source of all hard guarantees. |
+| **`sys.*`** | AISOP system-call family (`sys.assert`, `sys.io.confirm`, `sys.io.read`, `sys.run`, `sys.llm.json`, `sys.code.exec`, …). A conforming runtime enforces each operation's semantics; generated/model content is not made deterministic or verified merely by using this namespace. |
 | **Tier A** | The execution tier — `aisop.main` + `functions` + `sys.*` + `tools` / `params`. Heavy. |
 | **Tier S** | The contract tier — `user.content.aisp_contract`. Lean metadata only. |
 | **Trust (not self-declared)** | A skill MUST NOT claim `trusted` / `verified` / `safe`; trust is judged by the runtime / registry / user / scanner (M6 / SE6). |
@@ -63,7 +65,7 @@
 
 | Series | Scope | Source |
 |--------|-------|--------|
-| **M** | Skill conformance (M1–M6) | `AISP_Standard.core` |
+| **M** | Skill conformance (M1–M7) | `AISP_Standard.core` |
 | **R** | Runtime conformance (R1–R7) | `AISP_Standard.core` |
 | **SE** | Security (SE1–SE8) | `AISP_Standard.security` |
 | **ST** | Skill threats (ST1–ST6) | `AISP_Standard.security` |
@@ -103,4 +105,4 @@
 
 ---
 
-Align Axiom 0: Human Sovereignty and Wellbeing | Protocol: AISP | Execution: AISOP | Executor: SoulBot
+Align Axiom 0: Human Sovereignty and Wellbeing | Protocol: AISP | Execution: AISOP | Default Executor: SoulRun (replaceable)

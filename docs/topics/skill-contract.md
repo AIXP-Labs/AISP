@@ -32,7 +32,7 @@ The `instruction` field, also in the user message, names the contract for obedie
 "STRICTLY OBEY aisp_contract; its non_negotiable rules are inviolable; then RUN aisop.main"
 ```
 
-> Placing the contract in the user message makes the model **necessarily read it** (no rendering gamble). Program identity (`id` / `name` / `version` / `license` / `summary` / `description`) stays in `system.content` and is **not** duplicated in the contract.
+> Placing the contract in the user message exposes it directly in the model's context; this is not proof of understanding or compliance. Program identity (`id` / `name` / `version` / `license` / `summary` / `description`) stays in `system.content` and is **not** duplicated in the contract.
 
 ---
 
@@ -41,12 +41,12 @@ The `instruction` field, also in the user message, names the contract for obedie
 ```json
 {
   "profile": "aisp.skill.v1",
-  "invocation": { "mode": "auto_or_manual", "when_to_use": ["string"], "when_not_to_use": ["string"] },
-  "non_negotiable": [ { "rule": "string (NL)", "enforced_by": "<node>.stepN:<mechanism> | aisop.main | tools" } ],
-  "discovery": { "category": "string", "tags": ["string"] },
-  "risk_level": "low | medium | high | critical",
+  "invocation": { "mode": "auto_or_manual", "when_to_use": ["a matching user request"], "when_not_to_use": ["a request outside this skill's scope"] },
+  "non_negotiable": [ { "rule": "Follow the declared main flow.", "enforced_by": "aisop.main" } ],
+  "discovery": { "category": "reference", "tags": ["example"] },
+  "risk_level": "low",
   "resources": [
-    { "id": "string", "path": "relative/path", "kind": "data|script|reference|asset|template|…", "mode": "read_only|execute_only|read_and_execute", "when": "string?", "scope": "skill|shared?", "requires_tools": ["string"]? }
+    { "id": "reference", "path": "data/reference.md", "kind": "reference", "mode": "read_only", "when": "consulting the reference", "scope": "skill" }
   ]
 }
 ```
@@ -84,7 +84,7 @@ Triggering happens **before** execution ("should this skill start at all?"), whi
 
 ## non_negotiable
 
-A red line = a natural-language declaration (`rule`) **bound** to a real enforcement mechanism (`enforced_by`). This is AISP's core differentiator: **declaration ↔ enforcement is machine-verifiable** (conformance rule M4).
+A red line pairs a natural-language declaration (`rule`) with an enforcement reference (`enforced_by`). M4 machine-checks the reference's existence and mechanism prefix; the runtime must separately enforce the intended condition.
 
 ```json
 "non_negotiable": [

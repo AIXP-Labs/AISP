@@ -1,11 +1,11 @@
 {
   "manifest_version": "1.0",
   "directory": "aisp_reference_tools",
-  "snapshot_date": "2026-06-22",
+  "snapshot_date": "2026-11-13",
   "source_url": "https://github.com/AIXP-Labs/AISP/tree/main/tools",
-  "source_commit": "self-contained-init-force-release",
-  "snapshot_state": "init_force_single_commit",
-  "snapshot_note": "Bundled in the same single init-force release commit; a literal self-referential commit hash cannot be embedded without changing the commit hash. Use the published release commit plus these sha256 values as local integrity evidence only.",
+  "source_commit": "uncommitted-working-tree",
+  "snapshot_state": "working_tree_revision",
+  "snapshot_note": "Local internal protocol candidate copied from the working tree; no Git or network verification. Per-file hashes are local integrity only, not upstream commit or trust proof.",
   "scope": "complete top-level Python reference tools copied from the AISP tools directory; README.md and this manifest are local snapshot metadata",
   "trust_boundary": "sha256 values provide local integrity evidence only; they do not prove upstream trust, safety, or provenance",
   "files": [
@@ -16,43 +16,43 @@
     },
     {
       "path": "aisp_check_runtime_trace.py",
-      "bytes": 8087,
-      "sha256": "fe1f21d34587c4172aafb5cf142e0c226c509371bab28dcb9c17875461522553"
+      "bytes": 13296,
+      "sha256": "bc345527d264136fcbb3764e584e296116b1601cec044321a13f7f9fc2b2ad01"
     },
     {
       "path": "aisp_hash.py",
-      "bytes": 5938,
-      "sha256": "d3f703b6b08b71428eb6b5e733d645ed9d64fd02b7f69946487cf41d02c81f6d"
+      "bytes": 9874,
+      "sha256": "ba7f81e74a4801d765e31bdda694c8a45044d4a64ae047e4a56e5e2c99c17a2d"
     },
     {
       "path": "aisp_readme.py",
-      "bytes": 11479,
-      "sha256": "7d70e9595a25a93a62db5cc40920f784de652b001f46b5204d47dde964b25b99"
+      "bytes": 13027,
+      "sha256": "78d11506c7c2f4c216ab16e1c7e09e6472ddf760a664c11e93e79dfb56b63254"
     },
     {
       "path": "aisp_skill_md.py",
-      "bytes": 11778,
-      "sha256": "9039079a78a15d620dbefd8758fa962dad2b86fe14a0b4dc45360a41dd2dce0d"
-    },
-    {
-      "path": "aisp_validate.py",
-      "bytes": 48681,
-      "sha256": "50b2da27bbbd9a0f6bc249cbd7f84b01907f1643df597e4d4393854f2af11d02"
+      "bytes": 36980,
+      "sha256": "e08af2119133d9a24e141032a15ede041146e3ed2549100931665dfaf1a496f6"
     },
     {
       "path": "aisp_validate_agent_skill_bridge.py",
-      "bytes": 16537,
-      "sha256": "bbb4ef7420a93f9a476292cd6f847adb98cc4a06ccbd3f88a21c03658ce4d1d7"
+      "bytes": 18147,
+      "sha256": "c590b57bce975741fbf740889594feba53d34f95122dd301f91751a4dfa246d0"
+    },
+    {
+      "path": "aisp_validate.py",
+      "bytes": 61435,
+      "sha256": "4b783569076ed9c6f8c299fe4b1a2a7dd8d849069eb0b25c493364c0138a7eb8"
     },
     {
       "path": "check_doc_sync.py",
-      "bytes": 12368,
-      "sha256": "7be7dd140ba7f45e9645256c3c6dfc31b9c29ccf1949cac89753f875acb104bf"
+      "bytes": 17583,
+      "sha256": "640ff82017fea3f52dc7e377718edb7cf096e35e45453b861bfb104d06118a69"
     },
     {
       "path": "check_markdown_links.py",
-      "bytes": 5690,
-      "sha256": "ebbe117507d8efa802e80bd4b8ccfe272fdc94baf1c4045fdeb03dbecf36b6b6"
+      "bytes": 8746,
+      "sha256": "353c3b214c4cb3c2b703b9b4822867621a42dd035a3924bca0f65036a6aa4aee"
     }
   ]
 }

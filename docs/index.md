@@ -2,7 +2,7 @@
 
 Welcome to the **AI Skill Protocol (AISP)** documentation.
 
-AISP is an open standard for packaging executable, governable, distributable AI skills. It ensures **executable behavior** through AISOP program bodies, **machine-verifiable red lines** through `enforced_by → sys.*`, and **immutable alignment** through Axiom 0.
+AISP is an open protocol for packaging executable, governable, distributable AI skills. AISOP defines the program body; `enforced_by` makes red-line bindings statically checkable; Axiom 0 states the immutable alignment requirement. Actual hard guarantees still depend on a conforming executor, not merely on declaring those fields.
 
 This documentation site covers the protocol, examples, schemas, reference validators, and governance model. It does not bundle a production AISOP runtime, registry service, or trust authority. A conforming AISOP runtime is required to execute a skill and enforce runtime-only guarantees.
 
@@ -13,10 +13,13 @@ This documentation site covers the protocol, examples, schemas, reference valida
 AISP defines how an AI skill should be made executable, governable, and distributable. Every AISP skill is a self-contained folder containing:
 
 - **`aisp.aisop.json`** --- the skill body, a legal AISOP V1.0.0 program (execution graph, step-based functions, `sys.*` calls).
+- **`SKILL.md`** --- the required generated same-folder Agent Skills compatibility interface (M7), handing execution to a conforming executor, SoulRun by default.
 - **`user.content.aisp_contract`** --- a real JSON object in the user message holding invocation, red-line binding, discovery, risk, and resource inventory.
-- **Custom resources** --- `data/` / `scripts/` / etc., declared in the contract, plus a shared `_shared/` directory.
+- **Custom resources** --- `data/` / `scripts/` / etc., declared in the contract; optional cross-skill resources live in the sibling `aisp/_shared/` directory, not inside each skill.
 
-The skill is the program. The contract is lean metadata. Hard guarantees come only from `enforced_by → sys.*`; trust is never self-declared. The protocol is anchored by **Axiom 0: Human Sovereignty and Wellbeing** --- an immutable principle that no version of AISP may weaken or remove.
+The skill's business source is the program. The contract is lean metadata. Hard guarantees require actual enforcement of the bound `sys.*`, topology or restricted-tool mechanism; trust is never self-declared. The protocol is anchored by **Axiom 0: Human Sovereignty and Wellbeing**, an immutable principle that no version of AISP may weaken or remove.
+
+The required interface uses one version decision: a matching installed executor runs directly; proven absence/mismatch prompts for installation, followed by a matching recheck. Refusal, failure or an unusable probe stops. SoulRun is the replaceable default, and the policy is frozen rather than refreshed at every invocation. See [the interface guide](topics/interoperability-with-agent-skills.md).
 
 ---
 
@@ -55,7 +58,7 @@ The skill is the program. The contract is lean metadata. Hard guarantees come on
 | Resource | Description |
 |----------|-------------|
 | [Specification](specification.md) | Complete AISP V1.0.0 protocol specification |
-| [Conformance Walkthrough](guides/conformance-walkthrough.md) | Checking a skill against M1-M6 / R1-R7 |
+| [Conformance Walkthrough](guides/conformance-walkthrough.md) | Checking a skill against M1-M7 / R1-R7 |
 | [Release Evidence Matrix](reference/release-evidence-matrix.md) | Publication gate, evidence levels, expected warnings, and trust boundaries |
 | [Security Model](topics/security-model.md) | Resource attack surface, trust, the threat taxonomy |
 | [Axiom 0](topics/axiom-0.md) | The immutable alignment principle |
@@ -91,7 +94,7 @@ The skill is the program. The contract is lean metadata. Hard guarantees come on
 AISP is an **independent skill-package protocol** whose only base is AISOP:
 
 - **AISOP (AI Standard Operating Protocol)** is the execution language a skill body is written in — AISP's only base.
-- **Agent Skills (`SKILL.md`)** is complementary — generated/distributed AISP skills SHOULD include a thin same-folder `SKILL.md` sidecar by default unless explicitly opted out.
+- **Agent Skills (`SKILL.md`)** provides AISP's required generated compatibility interface; business truth stays in `aisp.aisop.json`. Without an available executor, stop rather than execute or continue the program yourself.
 - **AIAP (AI Application Protocol)** and the other AIXP protocols are **sibling projects**, not part of AISP's stack.
 
 AISP packages an AISOP program into a discoverable, governable, distributable skill, without rebuilding the engine. Its lifecycle (generation / evolution / distribution / registry) is AISP-native and tool-agnostic.

@@ -3,7 +3,7 @@
 > Complete reference for the `non_negotiable[].enforced_by` binding grammar.
 > `enforced_by` is what turns a declared red line into a machine-verifiable guarantee — the AISP differentiator from prose skills.
 
-A `non_negotiable` entry pairs a natural-language `rule` (policy-as-prompt; the model reads it; soft) with an `enforced_by` binding (policy-as-code; the runtime enforces it; hard). **Only `sys.*`-backed bindings are hard guarantees.** Whether the model "remembers" a rule does not affect a `sys.*`-enforced constraint.
+A `non_negotiable` entry pairs a natural-language `rule` with an `enforced_by` binding to a numeric `sys.*` step, graph topology or restricted tools. M4 can check the binding reference. Hardness requires the runtime to actually enforce the intended condition; the declaration, model memory and mechanism prefix are not themselves execution proof.
 
 ---
 
@@ -17,7 +17,7 @@ A `non_negotiable` entry pairs a natural-language `rule` (policy-as-prompt; the 
 
 > **`tools` caveat.** `enforced_by: tools` is a hard constraint **only when the runtime truly enforces tool permissions**. On a runtime that does not enforce tool permissions, `tools` is merely a declarative constraint and MUST NOT be counted as a hard guarantee. A top-level runtime declaration is an attestation, not independent proof; strict validation requires event-backed trace evidence or provenance-bearing tool capability evidence.
 
-Runtimes and registries MAY publish a tool capability declaration using [`schemas/tool-capabilities-v1.schema.json`](../../schemas/tool-capabilities-v1.schema.json). This lets consumers distinguish hard permission enforcement from advisory tool metadata when the declaration carries usable provenance.
+Runtimes and registries MAY publish a tool capability declaration using [`schemas/tool-capabilities-v1.schema.json`](https://github.com/AIXP-Labs/AISP/blob/main/schemas/tool-capabilities-v1.schema.json). This lets consumers distinguish hard permission enforcement from advisory tool metadata when the declaration carries usable provenance.
 
 ---
 
@@ -28,7 +28,7 @@ Runtimes and registries MAY publish a tool capability declaration using [`schema
 | policy-as-prompt | `rule` (NL), `functions` steps, `constraints` | Soft | The model's adherence |
 | policy-as-code | `enforced_by → sys.*`, graph topology, tool allow-list | Hard | The runtime |
 
-The two layers are complementary: the model reads the red line (so it is informed), and `sys.*` enforces it (so it cannot be skipped). Both are required — the contract in the user message makes the model **necessarily read** the rule; `sys.*` makes the rule **necessarily enforced**.
+The two layers are complementary: the contract exposes the rule to the model, and a conforming runtime must enforce its bound mechanism. Visibility does not prove model understanding; a static `sys.assert` reference does not prove expression support, evaluation or the rule's full semantics. Unverified runtime results must remain identified as such.
 
 ---
 
@@ -50,7 +50,7 @@ Verification: `functions.interpret.step1` exists and is
 ```
 
 Verification: `functions.interpret.step4` exists and is
-`"sys.assert('reading.disclaimer != null', 'Reading must state it is for reflection…')"`. ✓
+`sys.assert("reading.disclaimer == 'For reflection only, not deterministic prediction.'", 'The required disclaimer must match the declared wording')`. ✓
 
 From `stock_analysis_aisp`:
 
@@ -58,7 +58,7 @@ From `stock_analysis_aisp`:
 { "rule": "Every report must carry a not-advice disclaimer.", "enforced_by": "report.step2:sys.assert" }
 ```
 
-Verification: `functions.report.step2` exists and begins with `sys.assert` (asserts the disclaimer is present). ✓
+Verification: `functions.report.step2` exists and begins with `sys.assert` (compares the disclaimer to `Informational only; not financial advice.`). ✓
 
 ### Form 2 — `aisop.main` (topology binding)
 
@@ -106,4 +106,4 @@ Conformance rule **M4** (`FAIL`) checks every `non_negotiable[].enforced_by`:
 
 ---
 
-Align Axiom 0: Human Sovereignty and Wellbeing | Protocol: AISP | Execution: AISOP | Executor: SoulBot
+Align Axiom 0: Human Sovereignty and Wellbeing | Protocol: AISP | Execution: AISOP | Default Executor: SoulRun (replaceable)

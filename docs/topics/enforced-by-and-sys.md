@@ -3,7 +3,7 @@
 > AISP Protocol — Conceptual Guide
 > Classification: Enforcement
 
-A red line is only as strong as what enforces it. AISP binds each `non_negotiable` rule to a real mechanism via `enforced_by`, and draws a hard line between rules that are *read* (soft) and rules that are *enforced* (hard). This document explains the `enforced_by` grammar, the `sys.*` mechanisms behind it, and why only `sys.*` is a guarantee.
+A red line is only as strong as what enforces it. AISP binds each `non_negotiable` rule to a mechanism via `enforced_by`, distinguishing rules that are read from rules that a runtime actually enforces. This document covers `sys.*`, graph-topology and tool-permission bindings; a declaration or static prefix match alone is not a hard guarantee.
 
 ---
 
@@ -16,9 +16,9 @@ A red line is only as strong as what enforces it. AISP binds each `non_negotiabl
 | Where | The NL `rule` text in the contract / nodes | `enforced_by → sys.*` |
 | Who decides | The LLM, by reading | The runtime, deterministically |
 | Strength | **Soft** — depends on the model attending | **Hard** — holds regardless of model memory |
-| Verifiable | No | Yes (conformance rule M4) |
+| Verifiable | Not by the prose alone | M4 checks binding references; runtime evidence is needed for actual enforcement |
 
-> **Hard guarantees come only from `sys.*`.** Whether the model "remembers" a red line does not affect a hard constraint. A rule with no `sys.*` binding is guidance, not a guarantee.
+> **Hard guarantees come from actual runtime enforcement, not from the declaration.** A supported `sys.*` operation, required graph topology or truly enforced tool boundary can provide the bound mechanism. Whether a model remembers a rule is not an adequate substitute.
 
 ---
 
@@ -66,7 +66,7 @@ Example bindings from `yijing_aisp`:
 
 A skill author should prefer `<node>.stepN:sys.*` for guarantees that must hold on any conformant runtime, and reserve `tools` for capability-absence guarantees.
 
-A runtime's top-level `tool_enforcement: "hard"` declaration is only an attestation. For strict validation or release gates, `tools` hardness needs event-backed runtime trace evidence or provenance-bearing tool capability evidence.
+A runtime's top-level `tool_enforcement: "hard"` declaration is only an attestation. Strict checks require event-backed trace or provenance-bearing capability evidence, but accepting those fields does not independently authenticate them. Trace fixtures exercise the checker; actual hardness still requires genuine runtime permission controls and trusted provenance.
 
 ---
 
@@ -76,10 +76,12 @@ The declarative red-line field is named `non_negotiable`, **not** `assert`. The 
 
 ```text
 non_negotiable.rule   = a natural-language declaration (soft until bound)
-sys.assert(...)       = a deterministic hard check that aborts on failure (already hard)
+sys.assert(...)       = a check the runtime must evaluate and enforce, aborting on failure
 ```
 
 Naming the declarative field `assert` would falsely imply that the *declaration* is itself a hard check. Hardness comes from `enforced_by → sys.*`, not from the field name.
+
+The runtime must support the actual assertion expression. A model-declared `true`, unsupported expression accepted as unverified, or merely non-null output is not proof that the intended safety property was checked.
 
 ---
 

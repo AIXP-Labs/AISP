@@ -183,7 +183,9 @@
           ],
           "expected_exit": 0,
           "expect_stdout_contains": [
-            "# AISP Creator & Evolution"
+            "# AISP Skill (run with an executor)",
+            "run_with_executor_aisp",
+            "agent_skills_bridge"
           ]
         },
         {
@@ -408,7 +410,7 @@
           ],
           "expected_exit": 0,
           "expect_stdout_contains": [
-            "Read-only release gate"
+            "Static preflight"
           ]
         },
         {
@@ -423,21 +425,19 @@
           "expect_stdout_contains": []
         },
         {
-          "name": "release gate rejects default candidate without sidecar",
+          "name": "release gate rejects actual missing M7 interface",
           "kind": "boundary",
           "argv": [
             "python",
             "-B",
-            "scripts/check_generated_candidate.py",
-            "../../../tests/fixtures/valid/simple_aisp",
-            "--creator-root",
-            ".",
-            "--output-path",
-            "../../../tests/fixtures/valid"
+            "-c",
+            "import pathlib, subprocess, sys, tempfile\nwith tempfile.TemporaryDirectory(prefix='aisp-m7-') as tmp:\n    parent = pathlib.Path(tmp)\n    candidate = parent / 'missing_interface_aisp'\n    candidate.mkdir()\n    (candidate / 'aisp.aisop.json').write_bytes(pathlib.Path('evals/candidate-seed.json').read_bytes())\n    subprocess.run([sys.executable, '-B', 'aisp_reference_tools/aisp_readme.py', str(candidate), '--write'], check=True)\n    result = subprocess.run([sys.executable, '-B', sys.argv[1], str(candidate), '--creator-root', '.', '--output-path', str(parent)])\n    sys.exit(result.returncode)",
+            "scripts/check_generated_candidate.py"
           ],
           "expected_exit": 1,
           "expect_stdout_contains": [
-            "AISP_E_CANDIDATE_SIDECAR_MISSING_DEFAULT"
+            "AISP_E_CANDIDATE_SIDECAR_MISSING_DEFAULT",
+            "AISP_E_M7_SKILL_MD_MISSING"
           ]
         },
         {
@@ -454,6 +454,53 @@
           "expected_exit": 1,
           "expect_stdout_contains": [
             "\"pass\": false"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "scripts/check_research_result.py",
+      "cases": [
+        {
+          "name": "valid research envelope",
+          "kind": "positive",
+          "argv": [
+            "python",
+            "-B",
+            "scripts/check_research_result.py"
+          ],
+          "stdin": "{\"status\": \"complete\", \"findings\": [{\"claim\": \"A sourced claim\"}], \"citations\": [{\"id\": \"c1\", \"source\": \"local fixture\"}]}",
+          "expected_exit": 0,
+          "expect_stdout_contains": [
+            "\"valid\": true"
+          ]
+        },
+        {
+          "name": "empty incomplete research remains recoverable",
+          "kind": "boundary",
+          "argv": [
+            "python",
+            "-B",
+            "scripts/check_research_result.py"
+          ],
+          "stdin": "{\"status\": \"incomplete\", \"findings\": [], \"citations\": []}",
+          "expected_exit": 0,
+          "expect_stdout_contains": [
+            "\"valid\": true"
+          ]
+        },
+        {
+          "name": "object findings rejected",
+          "kind": "failure",
+          "argv": [
+            "python",
+            "-B",
+            "scripts/check_research_result.py"
+          ],
+          "stdin": "{\"status\": \"complete\", \"findings\": {}, \"citations\": []}",
+          "expected_exit": 1,
+          "expect_stdout_contains": [
+            "\"valid\": false"
           ]
         }
       ]

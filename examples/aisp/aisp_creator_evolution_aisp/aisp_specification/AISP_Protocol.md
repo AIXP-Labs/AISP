@@ -2,7 +2,7 @@
 
 > **AISP defines the package. AISOP executes it.**
 >
-> AISP is an executable skill-package protocol, not another `SKILL.md` format.
+> AISP is an executable, governable skill package built on AISOP and bridged to agent platforms through the Agent Skills standard.
 
 | Field | Value |
 |-------|-------|
@@ -22,7 +22,8 @@ A native AISP skill is a self-contained folder containing:
 - `aisp.aisop.json` - the executable AISOP program and fixed skill-file name.
 - `user.content.aisp_contract` - the machine-checkable skill contract, as a real object in the user message.
 - Declared resources - data, scripts, or shared assets listed in `aisp_contract.resources`.
-- Default projections - generated per-skill `README.md` and same-folder thin `SKILL.md` sidecar bridges for distribution and interoperability. Core AISP conformance does not require `SKILL.md`, but authoring tools SHOULD generate it by default unless the author explicitly opts out.
+- `SKILL.md` - the required, generated same-folder Agent Skills compatibility interface (M7); its fixed bootstrap hands execution to an executor, not to the host's improvised execution.
+- `README.md` - the recommended generated package introduction (EC8), required by strict/release profiles.
 
 Hard guarantees come only from real mechanisms such as `enforced_by -> sys.*`. Natural-language guidance is soft, and trust is never self-declared.
 
@@ -75,7 +76,7 @@ Hard guarantees come only from real mechanisms such as `enforced_by -> sys.*`. N
 
 **Part VI: Interoperability & Lifecycle**
 
-- [20. Interoperability: Default SKILL.md Sidecar Bridge](#20-interoperability)
+- [20. Interoperability: Required Agent Skills Compatibility Interface](#20-interoperability)
 - [21. Lifecycle: Generation / Evolution / Distribution](#21-lifecycle)
 
 **Part VII: Examples & Honesty**
@@ -133,6 +134,7 @@ This document defines the skill-package specification for AISP skills, including
 - The two tiers (Tier A execution / Tier S contract)
 - The aisp_contract schema and its placement in the user message
 - The enforced_by red-line binding (policy-as-code)
+- The required generated SKILL.md compatibility interface and executor-only execution
 - Discovery, progressive disclosure, security, naming, versioning, and lifecycle
 
 Every AISP skill MUST first be a legal AISOP V1.0.0 program.
@@ -159,12 +161,13 @@ This protocol is documented in several artifact families. When they conflict, th
 
 > AISOP is the language a skill is written in. **AISP is the package.**
 
-A **native AISP skill** is a **self-contained folder** containing one fixed-name AISOP program `aisp.aisop.json` plus that skill's own custom-layout resources. It expresses a **reusable, executable, governable, evolvable** capability using AISOP's own structure — it does **not** require or depend on an Agent Skills `SKILL.md`. A `SKILL.md` MAY exist only as a same-folder sidecar projection; authoring and distribution tools SHOULD include that sidecar by default unless the author explicitly opts out.
+A **native AISP skill** is a **self-contained folder** containing one fixed-name AISOP program `aisp.aisop.json`, the required generated same-folder `SKILL.md` compatibility interface, and its declared custom-layout resources. The reusable, executable, governable and evolvable business capability is defined only in `aisp.aisop.json`; the interface hands execution to a conforming AISP/AISOP executor. AISP recognizes the Agent Skills standard as its bridge to agent platforms, without turning the bridge into a second business definition.
 
 ```text
 A native AISP skill =
     one folder (folder = skill; folder name = id; MUST end with _aisp)
   + aisp.aisop.json (an AISOP program: contract + execution graph + nodes + sys.*)
+  + SKILL.md (required generated Agent Skills compatibility interface, M7)
   + custom resources (data/ scripts/ … declared in aisp_contract.resources)
 ```
 
@@ -176,7 +179,7 @@ A native AISP skill =
 
 ### 2.1 The Skill Is the Program
 
-Agent Skills (`SKILL.md`) describe a skill as Markdown prose plus progressive disclosure. AISP keeps the *spirit* of that (reusable capability, triggering, progressive disclosure, resources) and discards the *form* (the `SKILL.md` body). The truly executable subject is `aisp.aisop.json`, discovered and executed directly by an AISP/AISOP runtime. To run on an existing Agent Skills platform, authoring tools SHOULD add a thin same-folder `SKILL.md` sidecar bridge by default (§20), while authors MAY omit it for native-only packages.
+Agent Skills (`SKILL.md`) provide the standard discovery and compatibility interface. AISP's executable business subject remains `aisp.aisop.json`. Every conformant package MUST include its generated same-folder `SKILL.md` (§20), including packages consumed directly by a runtime. The bootstrap has fixed interface logic, not a copy of the skill's business functions. Execution MUST use a conforming executor; the host MUST NOT bypass it to execute or continue the business program itself.
 
 ```text
 Naming conventions:
@@ -195,10 +198,10 @@ Naming conventions:
 | | Agent Skills (`SKILL.md`) | **AISP (this protocol)** |
 |---|---|---|
 | Nature | Prose instructions + progressive disclosure | **Executable flow + governable** (AISOP graph + `enforced_by → sys.*` hard constraints + red-line binding) |
-| Standardization | Cross-vendor open standard | AISP's own; **can include a `SKILL.md` sidecar** to plug into those platforms |
-| Relationship | — | **Complementary**: AISP provides the executable + governable that Agent Skills lack, and is backward-compatible via a default-generated but core-optional sidecar |
+| Standardization | Cross-vendor open standard | AISP's package rules plus a **required generated `SKILL.md` compatibility interface** |
+| Relationship | — | **Complementary**: AISOP supplies the executable business program; the Agent Skills interface bridges it to hosts and delegates execution to an executor |
 
-Public framing: **"AISP does not replace Agent Skills; it provides executable, verifiable, governable skills alongside them, and can include a thin `SKILL.md` sidecar to interoperate with Agent Skills platforms."**
+Public framing: **"AISP is an executable, governable skill package built on AISOP and bridged to agent platforms through the Agent Skills standard."**
 
 ### 3.2 Ecosystem Layering
 
@@ -228,12 +231,21 @@ A conformant AISP skill:
 
 - **M1** MUST be **structurally a legal AISOP V1.0.0 program** (2-message array, required fields, the `user.content` `instruction` / `aisop` / `functions`, `aisop.main` present). Its `protocol` field MUST declare **`AISP V1.0.0`** (marking the file as AISP). The AISOP reference validator checks only that `protocol` *exists*, not its value, so it accepts `AISP V1.0.0`; the AISOP engine executes normally (it does not gate on the `protocol` value). Required fields: `protocol` / `axiom_0` / `id` / `name` / `version` / `flow_format` / `loading_mode` (`license` SHOULD be present, default `Apache-2.0`). For AISP skills, `loading_mode` MUST be exactly `"node"`.
 - **M2** MUST live at `aisp/<id>/` with the file name `aisp.aisop.json`, where `<id>` == the folder name and **ends with `_aisp`** (§18).
-- **M3** MUST contain `user.content.aisp_contract` (a real object) whose `profile` starts with `aisp.skill.`, and which contains `invocation` and `non_negotiable` (§8).
+- **M3** MUST contain `user.content.aisp_contract` (a real object) whose `profile` matches `^aisp\.skill\.v[0-9]+$` (currently `aisp.skill.v1`), and which contains `invocation` and `non_negotiable` (§8).
 - **M4** Every `non_negotiable.enforced_by` MUST point to a mechanism that **actually exists** in the skill (§10).
 - **M5** Each `resources[].path` (if any) MUST be a relative path, confined to the skill folder or `_shared/`, with no `../` escape (§17).
 - **M6** A skill MUST NOT self-declare trust (`trusted` / `verified` / `safe`) — trust is judged by the consumer (§17).
+- **M7** A skill MUST contain a generated same-folder `SKILL.md`: (1) the file exists; (2) `name`, `description` and outer `license` match the skill-derived values; (3) metadata and fixed bootstrap match the generator, allowing only five launch strings and a valid frozen `executor_version_policy` in `params` to vary (§20). Missing, legacy, malformed or drifted interfaces FAIL. EC7 is the legacy interoperability mapping, not a missing-interface exemption.
 
 ### 4.2 Runtime Conformance
+
+An AISP skill MUST run through an available executor satisfying AISP/AISOP runtime requirements. The reference bootstrap defaults to **SoulRun** (`soulrun.dev`); other conforming executors, including host-embedded runtimes, are allowed. The host MUST NOT bypass the executor to execute or continue `aisp.aisop.json`. Reading programs, contracts, nodes or resources through the executor's regular interface (for example `soulrun --program`), and user-requested code review, are not prohibited.
+
+R1-R7 below define runtime behavior. The bootstrap launch strings and frozen version policy are reference launch configuration, not executor certification or the sole interface every embedded runtime must expose. Executors must preserve blocking human gates, red lines and independent sub-agent dispatch for `execute_mode: "agent"`. Before an executor exists, installation consent relies on the host's own confirmation/permission controls, not an absent executor's hard gate.
+
+Distinguish not installed, installed but unusable, incompatible or unverified version, and run failure; a run failure is not permission to reinstall or upgrade automatically. The fixed bootstrap requires the reported executor package version to satisfy its frozen constraint, not merely a callable command (§20.1). Unknown output stops rather than passing. Static checks validate the policy's shape, not the truth of a version report or actual runtime compatibility. Command exit 0 may mean turn preparation or waiting at a gate, not completion; a waiting gate is not consent. Completion requires the run record's terminal state and corresponding outputs within the verified scope.
+
+The default bootstrap deliberately adds no `--session-id`. Within the same project/runtime directory and default scope, only one active session is supported; waiting for a user answer is still active. Alternating messages across chat windows does not isolate sessions. Concurrent conversations require stable host isolation or separate project/runtime directories. A complete executor compatibility suite is outside this revision.
 
 - **R1 (MUST)** An AISP runtime MUST read `user.content.aisp_contract` as the skill contract; MUST NOT skip required nodes of `aisop.main`; MUST NOT bypass `sys.io.confirm` (inherited from Axiom 0).
 - **R2 (MUST)** For `non_negotiable`, the runtime MUST enforce the hard constraint via the mechanism its `enforced_by` points to.
@@ -242,6 +254,8 @@ A conformant AISP skill:
 - **R5 (SHOULD)** Before handling an untrusted skill/resource, a runtime SHOULD pass it through a user trust gate; it SHOULD prefer reading `aisp_list.json` (no script execution, §16).
 - **R6 (SHOULD)** A runtime SHOULD declare whether its tool enforcement is hard (permissions actually enforced) or advisory. If advisory, `enforced_by: tools` MUST NOT be treated as a hard guarantee.
 - **R7 (MUST)** A runtime MUST honor each node's `execute_mode` — an inherited AISOP node-level field (AISOP spec §5.2.8). A node declared `execute_mode: "agent"` MUST be dispatched to an independent sub-agent and MUST NOT be collapsed inline; a node declared `"inline"` executes in the current context. If `execute_mode` is omitted, the runtime falls back to `inline` and the static validator emits a warning so the dispatch intent can be made explicit. A conformant AISP skill MUST NOT declare any explicit value other than `"inline"` or `"agent"`. This is the execution-fidelity guarantee. `execute_mode` is a dispatch attribute the runtime honors — NOT an `enforced_by` mechanism (§15).
+
+Reference trace coverage: agent nodes need matching dispatch evidence. Recorded events for known inline nodes (including omitted-mode defaults) must declare both `mode` and `dispatched_as` as inline; this consistency check does not require inline events for every node. Trace acceptance does not authenticate events or certify complete runtime conformance.
 
 ### 4.3 Open-World AISOP Compatibility
 
@@ -257,7 +271,8 @@ This is the operational restatement of R4: AISP does not fork the AISOP language
 | Skill file | `aisp.aisop.json` (the AISOP program) |
 | Skill contract (`aisp_contract`) | `user.content.aisp_contract` (a real object) |
 | Tier A / Tier S | Execution tier (`aisop.main` / `functions` / `sys.*`) / Contract tier (`aisp_contract`) |
-| Sidecar bridge | A default-generated but core-optional same-folder `SKILL.md`, only for Agent Skills platform interop |
+| Agent Skills compatibility interface (bridge interface) | The required generated same-folder `SKILL.md`; fixed bootstrap, not business source of truth |
+| Executor | A program that runs skills under AISP/AISOP runtime requirements; not vendor-bound, SoulRun by default |
 
 ---
 
@@ -274,12 +289,14 @@ aisp/                          # visible directory (not hidden); browsable by AI
   aisp_list.json               # index cache (reading it also yields full skill info)
   yijing_aisp/                 # folder name = id "yijing_aisp" (MUST end with _aisp)
     aisp.aisop.json            # fixed file name (a skill = one AISOP program)
+    SKILL.md                   # MUST: generated Agent Skills compatibility interface
     README.md                  # SHOULD: generated bootstrap projection from aisp.aisop.json
     data/
       hexagrams.json
       interpretation_guide.md
   stock_analysis_aisp/
     aisp.aisop.json
+    SKILL.md
     README.md
     data/ scripts/ ...
   _shared/                     # cross-skill shared resources (NOT a skill folder; no _aisp suffix)
@@ -294,7 +311,7 @@ Rules:
 4. **Resource layout is custom** (`data/` / `scripts/` / …), declared by `aisp_contract.resources`; no fixed subfolder is forced.
 5. Per-skill `README.md` SHOULD be generated from `aisp.aisop.json`; strict/release profiles MAY treat missing/manual/drifted README, bad source markers, or unsupported generator markers as a failure (EC8). It is a bootstrap projection, not the source of truth.
 6. `_shared/` holds shared resources (`scope: "shared"`).
-7. No core-required `SKILL.md`; authoring tools SHOULD add a same-folder sidecar bridge by default for new or distributed skills unless the author explicitly opts out (§20).
+7. Every conformant package MUST include a generated same-folder `SKILL.md` compatibility interface (M7, §20); there is no author opt-out.
 8. Discovery: read `aisp/aisp_list.json` or run `aisp/aisp_list.py` via bash, with a glob fallback `aisp/*_aisp/aisp.aisop.json` (§16).
 
 ---
@@ -309,7 +326,7 @@ Rules:
 
 **Truth model**: **the skill folder is the single source of truth; `aisp_list.py` is the generator; `aisp_list.json` is the cache.** The three do not compete — the folder wins; if the JSON is suspected stale, re-run the script.
 
-Per-skill `README.md` is a generated projection for independent package bootstrap. A successful README check proves only consistency with `aisp.aisop.json`; it does not prove trust, safety, or registry approval. Generic non-AISOP agents can follow it only as best-effort guidance; hard guarantees require a conforming AISOP runtime.
+Per-skill `README.md` is a generated package introduction. A successful README check proves only consistency with `aisp.aisop.json`, not trust, safety or registry approval. Generic hosts MUST hand execution through the interface to a conforming executor; without one, stop. README prose never authorizes best-effort self-execution or overrides an external provenance/user trust gate.
 
 ---
 
@@ -323,6 +340,8 @@ Per-skill `README.md` is a generated projection for independent package bootstra
 | **Tier S (contract, lean)** | triggering, red-line binding, discovery, risk, resource inventory | `user.content.aisp_contract` (a real object) |
 
 The contract holds only what the execution tier cannot express, or what the consumer needs to know in advance; everything else is placed in Tier A (§15).
+
+Inherited optional fields retain their types when present: `system.content.summary`, `description`, `license`, `system_prompt` and `user.content.user_input` are strings; `system.content.params` is an object; `system.content.tools` is an array of non-blank strings. Omitting tools or using an empty array is permitted unless a separate red-line binding requires a restricted allow-list. This does not make these fields required (`license` remains SHOULD), restrict parameter-value extensions, certify a license identifier or prove prompt/contract semantic consistency. Only an omitted license or a blank license string produces the advisory presence warning; a non-string license fails its type check instead.
 
 ---
 
@@ -347,7 +366,7 @@ The skill contract is **`user.content.aisp_contract`** — a **real JSON object*
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `profile` | MUST | `aisp.skill.v1` (the runtime detects it by the `aisp.skill.` prefix) |
+| `profile` | MUST | `aisp.skill.v1` (versioned `aisp.skill.v<major>` form; prefix-only recognition is not validation) |
 | `invocation` | MUST | Triggering (§9) |
 | `non_negotiable` | MUST | Red lines + `enforced_by` (§10) |
 | `discovery` | SHOULD | category / tags (§11) |
@@ -388,7 +407,7 @@ Triggering happens **before** execution ("should this skill start at all?"), whi
 
 ## 10. `non_negotiable` + `enforced_by`
 
-A red line = a declaration (NL `rule`) + **a binding to a real enforcement mechanism** (`enforced_by`). This is what distinguishes AISP from a prose skill: **declaration ↔ enforcement is machine-verifiable.**
+A red line = a declaration (NL `rule`) + **a binding to a real enforcement mechanism** (`enforced_by`). M4 machine-checks the binding reference, not the rule's complete semantics or its execution. The conforming runtime remains responsible for actual enforcement under R2.
 
 `enforced_by` grammar (MUST point to a mechanism that actually exists):
 
@@ -461,7 +480,7 @@ Key points: custom layout; `resources` is the single source of truth for "what i
 |--------|--------------------|--------------------|
 | `user.content.instruction` | **Strong master directive**: `"STRICTLY OBEY aisp_contract; its non_negotiable rules are inviolable; then RUN aisop.main"` | The model sees it on reading the user message |
 | `user.content.aisp_contract` | **Skill briefing**: triggering / red lines / governance / resources (read directly, treated as key content) | In the user message; the model reads it directly |
-| `functions.<node>.step` | **Task instructions** (what each step does; role / principles / knowledge are placed here) | The AISOP engine feeds them node by node |
+| `functions.<node>.stepN` | **Task instructions** (numeric execution steps; role / principles / knowledge are placed here) | The AISOP engine feeds them node by node |
 | `enforced_by → sys.*` | **Hard guarantees** (confirm / assert / tool gate) | Enforced by the runtime (R2, MUST), regardless of whether the model "remembers" |
 | `system_prompt` (system.content) | MAY be empty; or hold the actual model system prompt; or inject `{system_prompt}` | Author / runtime |
 
@@ -470,9 +489,9 @@ Key points: custom layout; `resources` is the single source of truth for "what i
 - The `instruction` names the contract for obedience via a **strong directive** (OBEY / inviolable).
 - `system_prompt` does not carry the contract (**MAY be empty**).
 - The model's task instructions are **in functions**.
-- **Soft-read + hard-stop, two layers**: the model reads the red lines (policy-as-prompt, soft) + `enforced_by → sys.*` truly stops them (policy-as-code, hard). **Hard guarantees come only from `sys.*`** — whether the model "remembers" a red line does not affect the hard constraint.
+- **Soft-read + hard-stop, two layers**: the user-message contract exposes the red lines; a conforming runtime MUST enforce their bound mechanisms under R2. Hardness comes from actual enforcement of `sys.*`, required graph topology or genuinely restricted tools, not from model memory or the declaration alone. A mechanism-prefix match does not prove that an assertion was supported, evaluated or semantically sufficient.
 
-> That is: the contract in the user message makes the model **necessarily read it** (no rendering gamble); `sys.*` makes the red line **necessarily enforced** (no memory gamble). Both layers are required.
+> Context visibility is not proof of understanding or compliance. Runtime enforcement is a requirement, not a fact established by a static binding; unsupported or unverified results must not be presented as verified hard checks. Both layers are required.
 
 ---
 
@@ -489,7 +508,13 @@ Key points: custom layout; `resources` is the single source of truth for "what i
 | Program identity | AISOP `summary` / `description` |
 | **Triggering / red-line binding / discovery / risk / resource inventory** | **`user.content.aisp_contract`** |
 
-> **`execute_mode` (dispatch fidelity).** Each node MAY declare `execute_mode`: `"inline"` (the default mode; runs in the current context and is right for short routing, classification, confirmation, and simple summarization) or `"agent"` (runs in an independent sub-agent and MAY be used for nodes that need isolation, independent context, multi-file work, web/source gathering, complex validation, generation, or high-impact decisions). Step count is not the sole criterion for choosing `agent`; short nodes may still be `agent` when isolation or impact justifies it. If omitted, the runtime falls back to `"inline"` and a conformant AISP validator emits `AISP_W_M1_EXECUTE_MODE_DEFAULT_INLINE`. Explicit values other than `"inline"` / `"agent"` fail static conformance. A runtime MUST honor `agent` (**R7**): an `agent` node MUST be dispatched to a sub-agent and MUST NOT be collapsed inline. Nodes with more than 10 numeric `stepN` execution steps SHOULD be reviewed for `execute_mode: "agent"`; the reference validator warns when such a non-agent node remains inline. Metadata fields such as `step_note` are ignored by this heuristic and cannot satisfy `enforced_by`. This threshold is a review heuristic, not a restriction on using `agent` for shorter but high-isolation nodes. `execute_mode` is an inherited AISOP field (AISOP §5.2.8), a runtime dispatch attribute — **not** an `enforced_by` mechanism, and **not** part of the contract (it is Tier A, per-node).
+`on_error` is inherited function-node metadata, distinct from a graph's
+`error` edge and from `aisp_contract`. AISOP routes by exact type, category,
+`default`, then the topology error fallback (§5.2.4). The reference static
+checker verifies object shape and target-function existence, not actual error
+dispatch or reachability in every graph context; those remain execution concerns.
+
+> **`execute_mode` (dispatch fidelity).** Each node MAY declare `execute_mode`: `"inline"` (the default mode; runs in the current context and is right for short routing, classification, confirmation, and simple summarization) or `"agent"` (runs in an independent sub-agent and MAY be used for nodes that need isolation, independent context, multi-file work, web/source gathering, complex validation, generation, or high-impact decisions). Step count is not the sole criterion for choosing `agent`; short nodes may still be `agent` when isolation or impact justifies it. If omitted, the runtime falls back to `"inline"` and a conformant AISP validator emits `AISP_W_M1_EXECUTE_MODE_DEFAULT_INLINE`. Explicit values other than `"inline"` / `"agent"`, including null or container values, fail static conformance; they are not omitted declarations. A runtime MUST honor `agent` (**R7**): an `agent` node MUST be dispatched to a sub-agent and MUST NOT be collapsed inline. Nodes with more than 10 numeric `stepN` execution steps SHOULD be reviewed for `execute_mode: "agent"`; the reference validator warns when such a non-agent node remains inline. Metadata fields such as `step_note` are ignored by this heuristic and cannot satisfy `enforced_by`. This threshold is a review heuristic, not a restriction on using `agent` for shorter but high-isolation nodes. `execute_mode` is an inherited AISOP field (AISOP §5.2.8), a runtime dispatch attribute — **not** an `enforced_by` mechanism, and **not** part of the contract (it is Tier A, per-node).
 
 ---
 
@@ -523,9 +548,9 @@ Triggering relies entirely on `aisp_contract.invocation` + `discovery` (replacin
 
 Resources are the attack surface (scripts / templates / examples / remote URLs can hide malicious payloads). Rules:
 
-1. `path` is relative, **confined to the skill folder or `_shared/`, no `../` escape** (M5).
+1. `path` is relative, **confined to the skill folder or `_shared/`, no `../` escape** (M5). Resolve and confine `_shared/` itself to the containing `aisp/` directory before reading resources; an outward root link does not extend the package boundary.
 2. Remote URLs are disabled by default and require user confirmation.
-3. `mode` gating: `execute_only` scripts are not injected in full into the model; `read_only` is not executed.
+3. `mode` gating: `execute_only` scripts are not injected in full into the model; `read_only` is not executed. Reference static matching covers selected literal `sys.io.read`, `sys.run` and `sys.run.bg` calls, including call whitespace, ordinary quoted Python paths and dot/separator aliases. It distinguishes supported Python option clusters and file operands rather than assuming any `.py` argument is executed. Distinct scoped resources may share relative names. If every matching declaration forbids an operation, SE3 fails even when the target scope is ambiguous; otherwise unresolved literal use warns without proving the selected scope or combining permissions. This is not a complete shell/command parser and does not prove runtime enforcement.
 4. Scripts use `requires_tools` for least authority; dangerous commands trigger `sys.io.confirm`.
 5. **Trust is not self-declared** (M6) — `verified` / `trusted` / `safe` are judged by the runtime / registry / user / scanner.
 6. The registry records provenance (source / commit / `contract_sha256` / `resources_sha256`).
@@ -533,6 +558,8 @@ Resources are the attack surface (scripts / templates / examples / remote URLs c
 8. `aisp_list.py` is a script, so **running it = executing code**: it MUST be minimal, auditable, zero-dependency, and only write `aisp_list.json` with no other side effects; untrusted directories SHOULD prefer reading `aisp_list.json` (no execution), passing a trust gate before running the script.
 9. **Axiom 0**: every skill inherits "Human Sovereignty and Wellbeing"; `sys.io.confirm` 🔒 cannot be bypassed.
 10. **Read-only during execution**: an AISP runtime SHOULD treat skill packages (files and resources) as read-only during normal execution. Modifications happen only through a deliberate evolution/edit step.
+
+The reference discovery-script checker performs a bounded AST scan, not a proof of arbitrary Python behavior or a sandbox. Passing it does not authorize executing an untrusted script; manual review and the host trust gate remain necessary. Invalid encoding, non-file inputs and escaping discovery-script links fail inspection rather than crash or read outside the directory.
 
 ---
 
@@ -543,7 +570,7 @@ Resources are the attack surface (scripts / templates / examples / remote URLs c
 | `aisp_contract` field name | Fixed; not `aisp_skill_contract` ("skill" is redundant — AISP already contains it) / not a bare `skill_contract` (lacks namespace) |
 | Skill `id` (= folder name) | **MUST end with `_aisp`**; lowercase alphanumeric + underscore; e.g. `yijing_aisp`, `stock_analysis_aisp` |
 | `profile` | `aisp.skill.v1` (detected by the `aisp.skill.` prefix) |
-| `SKILL.md` sidecar `name` (if any) | `id` minus `_aisp` / converted to hyphens, lowercase; **MUST NOT contain "anthropic" / "claude"**; ≤ 64 (§20) |
+| Required `SKILL.md` interface `name` | `id` minus `_aisp` / converted to hyphens, lowercase; **MUST NOT contain "anthropic" / "claude"**; ≤ 64 (§20) |
 | Declarative rule field | Use `non_negotiable`, **not `assert`** (`assert` is already `sys.assert`, a deterministic hard check — the opposite semantics); hardness comes from `enforced_by → sys.*` |
 
 ---
@@ -570,36 +597,11 @@ system.content.version                = "1.0.0"             ← the skill's own 
 
 ## 20. Interoperability
 
-**A native AISP skill does not require `SKILL.md` for core conformance.** To be discovered on Agent Skills platforms (Claude Code / Codex / Gemini / Copilot / Cursor), authoring tools SHOULD generate a thin same-folder `SKILL.md` sidecar bridge inside the native `*_aisp/` skill folder by default, unless the author explicitly opts out. The sidecar only guides loading and running the local `aisp.aisop.json`; it never copies logic; deleting it leaves the native AISP skill working under an AISP/AISOP runtime.
+**Every conformant AISP skill MUST contain the generated same-folder `SKILL.md` Agent Skills compatibility interface (M7).** It is not optional, even for runtime-native packages. The sole business source of truth remains `aisp.aisop.json`; the interface contains only the fixed executor bootstrap, not copies of business nodes, resources or red lines.
 
-```markdown
----
-name: yijing
-description: Cast and interpret an I Ching (Yijing) hexagram for a question. Use when asked for a yijing/I Ching reading or hexagram interpretation. Do not use for medical, legal, or financial decisions needing a professional.
-license: Apache-2.0
-metadata:
-  generated_from_aisp: "true"
-  aisp_program: aisp.aisop.json
-  protocol: AISP V1.0.0
-  bridge_mode: native_sidecar
----
+`tools/aisp_skill_md.py` generates the canonical interface, titled `# AISP Skill (run with an executor)`, with the existing generated/source/generator markers. Its two-message bootstrap is identified by `run_with_executor_aisp`. This id denotes an internal interface program, **not another independently distributed skill**; do not recursively require a folder, README or SKILL.md for it.
 
-# Yijing Divination (AISP-backed)
-
-This `SKILL.md` is a thin discovery bridge, not the source of truth.
-The executable source of truth is the same-folder `aisp.aisop.json` (AISP V1.0.0 skill over an AISOP V1.0.0 program).
-Runtime compatibility note: hard execution requires a conforming AISP/AISOP runtime; this bridge alone is only a discovery and loading guide.
-
-When invoked:
-1. Load `aisp.aisop.json`.
-2. Execute `RUN aisop.main`.
-3. Treat `user.content.aisp_contract` as the skill contract,
-   `user.content.aisop.main` as the topology, `user.content.functions` as node ops.
-4. Load resources (declared in `aisp_contract.resources`) only when a node reads them.
-   Never skip required nodes.
-```
-
-Bridge field projection:
+Field projection:
 
 | `SKILL.md` field | Projected from | Constraint |
 |------------------|----------------|------------|
@@ -608,33 +610,81 @@ Bridge field projection:
 | `license` | `system.content.license` | Default `Apache-2.0` |
 | `metadata.generated_from_aisp` | Generator marker | Literal `"true"` for generated bridges |
 | `metadata.aisp_program` | Same-folder program path | MUST be `aisp.aisop.json`; no absolute path, URL, subdirectory, or `..` escape |
-| `metadata.bridge_mode` | Bridge shape marker | SHOULD be `native_sidecar` for generated sidecars |
-| `allowed-tools` | `system.content.tools` | Include only when the host platform supports the field |
+| `metadata.protocol` | Protocol marker | MUST be `AISP V1.0.0` |
+| `metadata.bridge_mode` | Interface marker | MUST be `agent_skills_bridge` |
 
-Generated bridges MUST NOT invent custom top-level frontmatter keys such as `compatibility`; put runtime compatibility and hard-execution boundaries in the body text or in documented metadata accepted by the target platform.
+The canonical header uses `name`, `description`, `license` and `metadata`; it MUST NOT gain custom keys such as `compatibility`. JSON-quoted strings provide deterministic YAML escaping. The outer `license` derives from the business skill (`Apache-2.0` by default); the fixed bootstrap's own `license: Apache-2.0` covers that bootstrap only, not the business package.
 
-Defaulting rule:
+### 20.1 Executor Configuration and Execution
 
-- Core AISP conformance: missing `SKILL.md` is allowed.
-- Authoring/scaffold tools: generate `SKILL.md` by default unless the user opts out.
-- Public examples, release packages, and registry distributions: SHOULD include `SKILL.md`; a missing sidecar is an ecosystem warning, not a core failure.
+The bootstrap's `system.content.params` contains exactly five non-empty launch strings (`executor`, `executor_version`, `executor_command`, `executor_install`, `executor_help`) and one `executor_version_policy` object. No duplicate or extra keys are allowed. `executor_version` is still the version-query command, not the constraint. The policy has exactly `requirement` and `source`:
 
-Sidecar generation and validation:
+```json
+{
+  "executor_version_policy": {
+    "requirement": ">=1.0.1",
+    "source": "latest_stable"
+  }
+}
+```
+
+The number above is an illustration, not a permanent protocol minimum. The bounded reference syntax is `>=X.Y.Z` or `==X.Y.Z`, using stable three-component numeric versions. `source` is `latest_stable` for an automatically resolved lower bound, or `explicit` for a user/author constraint. A `latest_stable` policy MUST use `>=`. Compare numeric components, not strings. Prerelease/ambiguous executor reports stop; the tool reports unsupported stable release forms rather than silently choosing an older default.
+
+SoulRun is only the default adapter, **not a protocol dependency or required vendor**. On first generation, recognized migration without a policy, or explicit refresh of its default-managed policy, the reference generator queries official PyPI for the latest non-development, non-prerelease, non-yanked stable release and freezes the concrete lower bound. Returned metadata must identify the SoulRun project; that consistency check is not independent provenance verification. Runtime compatibility checks do not query latest or replace the frozen bound; a required installation may access the package source after user consent. A stored explicit constraint takes precedence, even on refresh; a new explicit CLI constraint takes precedence over both. Other executors use their own launch commands and an explicit version constraint; this tool does not substitute SoulRun or invent another vendor's release resolver.
+
+There is one version-gated bootstrap and one core decision: whether the configured executor's installed package version satisfies the frozen requirement. A match runs directly; proven absence or mismatch asks for a matching installation, then rechecks the same condition. Probe errors stop. The rows below illustrate that one rule under different constraints, not different bootstrap types.
+
+| Requirement | Installed state | Bootstrap behavior |
+|---|---|---|
+| `>=1.0.0` | 1.0.0 or higher | Run directly without an installation/upgrade question |
+| `>=1.0.0` | Missing or lower | Ask to install the latest stable release satisfying the bound |
+| `==1.0.0` | Exactly 1.0.0 | Run directly |
+| `==1.0.0` | Missing or any other version, including 1.0.1 | Ask to install exactly 1.0.0; explicitly disclose a downgrade |
+| Either | Unknown report, permission denial, timeout or unusable executor | Stop; do not guess compatibility or automatically reinstall |
+
+The installation command must target that policy: for the default adapter the generator produces `python -m pip install --upgrade "soulrun>=X.Y.Z"` or `python -m pip install "soulrun==X.Y.Z"`. When explicitly selecting or refreshing a policy, either exact generated command form (or the old unpinned default) is updated even if its previous constraint disagrees with the stored policy. An exact pin must never be replaced by an unpinned latest install. Preserve custom commands, but stop before installation if their target cannot be established; do not silently rewrite them. User refusal, installation failure, or a failed/unparseable/mismatching post-install version recheck means no execution and no automatic retry. Check the configured executor package version, not the AISP protocol or bundled engine version. Satisfying the version requirement does not bypass the skill's business confirmation gates.
+
+A missing probe result requires evidence that the configured executor package or entry point is absent, including a missing executor module behind an available launcher such as `python -m`. Missing unrelated dependencies/helpers, invalid commands, permission denial, timeout and ambiguous failures are unusable, not permission to reinstall.
+
+The default invocation passes the skill directory, project `.soulrun_cache` directory, user message file, and `--host-tool "agent=<host capability>"`; it adds no session id (§4.2).
+
+The fixed bootstrap checks the frozen requirement, asks before installation/upgrade/downgrade when needed, rechecks after installation, then delegates to the executor. If installation is declined or unavailable, the skill does not run. The host MUST NOT bypass the executor to execute or continue the business program. Executor-mediated reads and user-requested review remain allowed. Before an executor exists, consent and version checks depend on the host; the bootstrap itself is not a hard runtime guarantee. See §4.2 for status distinctions and session boundaries.
+
+### 20.2 Deterministic Generation and Explicit Migration
+
+Generated output has three inputs: the business program, executor configuration (five launch strings plus the frozen version policy), and the generator revision (identify the actual tool by content digest). Default resolution supplies the concrete policy before rendering; it is not an implicit runtime dependency. No new configuration file, template registry or executor registry is required.
+
+Registry manifest 1.1 adds `program_sha256` over the canonical complete two-message program to `package_sha256`. The schema still accepts legacy 1.0, which does not bind business-function edits. These are integrity domains, not archive-wide coverage: undeclared files and generated SKILL.md executor configuration are not automatically bound. Review or pin the actual interface separately; neither a matching hash nor its generated marker certifies commands, versions or trust. This artifact revision does not change AISP V1.0.0.
+
+| Existing input | Generation/preview | Read-only check |
+|---|---|---|
+| Missing interface | Defaults, first generation | FAIL M7 |
+| Exactly recognized old projection or five-string callability bootstrap | Explicit migration; preserve launch strings and resolve the default policy or use an explicit constraint; `--write` reports migration | FAIL M7; checks never resolve or migrate |
+| Exactly recognized preceding version-policy bootstrap (executable-only absence classification) | Explicit migration; preserve commands and frozen policy without a query unless refresh or an explicit override is requested | FAIL M7; checks never resolve or migrate |
+| Valid current bootstrap | Preserve launch strings and policy; derive/update name, description and license | Compare all three derived fields plus exact fixed interface |
+| Damaged JSON, duplicate/missing/extra key, empty/non-string launch value or malformed policy | FAIL, no fallback | FAIL; file unchanged |
+| Unknown handwritten content or fixed-text drift | FAIL, no silent overwrite; restore fixed text explicitly | FAIL; file unchanged |
+
+To change executors, configure the five launch strings and explicit version policy, then check; normal regeneration preserves valid values without network access. For the default adapter, `--executor-version-requirement '>=1.0.0'` or `'==1.0.0'` updates a standard installation command consistently. `--refresh-executor-version` queries only for a default-managed policy and never overrides an explicit one. Missing default metadata, network failure or unsupported versions fail without a stored-version fallback. Batch generation resolves a default once and preflights every input before writing. `--check`/`--check-all` are offline/read-only and reject generation/refresh options. `--print` and `--write` share selection rules; preview never writes. Do not delete an existing configured interface to simulate a refresh, since that discards explicit choices. A later I/O failure reports completed, failed/possibly partial and not-attempted files, not a false all-or-none success.
+
+Writing is UTF-8 without BOM, LF, with one trailing newline. Comparison strips a leading BOM, normalizes CRLF/CR to LF and trailing newlines. All other fixed text, JSON layout and metadata remain canonical. Core and bridge validators share one read-only M7 function that never calls back into core validation. Other resource, path and red-line failures remain visible.
+
+Generation and validation:
 
 ```bash
 python -B tools/aisp_skill_md.py examples --check-all
 python -B tools/aisp_validate_agent_skill_bridge.py examples/aisp --strict-readme
 ```
 
-A passing sidecar generation check proves only that `SKILL.md` matches the deterministic projection from `aisp.aisop.json`. A passing bridge check proves only sidecar shape, safe same-folder pointer confinement, and native AISP validation. Neither proves external trust, registry approval, or hard execution on a non-AISOP platform.
+A passing M7 check proves only unchanged bootstrap text and valid format, including the skill-derived header. It does not certify that the configured values denote an available or compatible executor; even `echo available`/`echo done` substitutes can satisfy string format. Bridge validation additionally checks existing frontmatter/path constraints and native package conformance. Neither proves external trust, safety, registry approval, runtime behavior or a completed run. Verify external provenance or obtain a user trust decision before running an untrusted package; package-contained generated markers cannot grant trust.
 
 ---
 
 ## 21. Lifecycle
 
-A skill's generation, evolution, and distribution are **AISP-native and tool-agnostic** — handled by external tooling of the author's choice. AISP defines the *package* and the conformance a skill must satisfy at each stage (M1–M6), **not** the toolchain. The descriptions below specify what any conforming tool MUST do, regardless of implementation.
+A skill's generation, evolution, and distribution are **AISP-native and tool-agnostic** — handled by external tooling of the author's choice. AISP defines the *package* and the conformance a skill must satisfy at each stage (M1–M7), **not** the toolchain. The descriptions below specify what any conforming tool MUST do, regardless of implementation.
 
-- **Generation**: a generator builds `aisp/<id>_aisp/aisp.aisop.json` (lean contract + rich Tier A) + custom resources; validates that `id` == the folder name and ends with `_aisp`, that each `enforced_by` is real, that resource paths are legal, and that resources referenced by functions are declared; produces / updates `aisp_list.json`; and generates per-skill `README.md` plus the default same-folder `SKILL.md` sidecar unless the author explicitly opts out. A generated skill MUST still satisfy core M1–M6.
+- **Generation**: a generator builds `aisp/<id>_aisp/aisp.aisop.json` (lean contract + rich Tier A) + custom resources; validates that `id` == the folder name and ends with `_aisp`, each `enforced_by` is real, resource paths are legal and function resources are declared; updates discovery; and generates per-skill `README.md` plus required same-folder `SKILL.md`. The skill MUST satisfy M1–M7. Finish resource/snapshot changes and manifests before regenerating interfaces and READMEs, then check read-only.
 - **Evolution**: a change MAY edit contract fields (invocation / non_negotiable / discovery / risk / resources) or functions / aisop.main; changing resources enters a deliberate evolution/edit step with a changelog entry and a security scan; it MUST NOT delete safety constraints, lower `risk`, or expand `tools` without justification.
 - **Registry / Distribution**: the unit of distribution is the skill folder. AISP is registry-agnostic and does not build or require a specific registry; any registry MAY index discovery + invocation + risk + provenance (hash). Trust / scoring / scanning are generated by the registry, never trusting self-declarations.
 
@@ -658,7 +708,7 @@ A skill's generation, evolution, and distribution are **AISP-native and tool-agn
       "version": "1.0.0",
       "license": "Apache-2.0",
       "summary": "Cast and interpret an I Ching (Yijing) hexagram for a user's question.",
-      "description": "Native AISP skill: clarify the question, cast a hexagram via a deterministic toss, and interpret it for reflection (not deterministic prediction).",
+      "description": "Native AISP skill: clarify the question, cast a hexagram randomly, and interpret it for reflection (not deterministic prediction).",
       "flow_format": "mermaid",
       "loading_mode": "node",
       "tools": ["filesystem", "code"],
@@ -707,8 +757,8 @@ A skill's generation, evolution, and distribution are **AISP-native and tool-agn
         "interpret": {
           "step1": "sys.assert('hexagram != null', 'No hexagram has been cast')",
           "step2": "sys.io.read('data/interpretation_guide.md') -> guide",
-          "step3": "sys.llm.json('Interpret the hexagram for the question using guide', schema={summary:'string', guidance:'string', changing_lines:'array', disclaimer:'string'}) -> reading",
-          "step4": "sys.assert(\"'reflection' in reading.disclaimer.lower() or 'not deterministic' in reading.disclaimer.lower()\", 'Reading must state it is for reflection, not deterministic prediction')",
+          "step3": "sys.llm.json('Interpret the hexagram for the question using guide; set disclaimer exactly to: For reflection only, not deterministic prediction.', schema={summary:'string', guidance:'string', changing_lines:'array', disclaimer:'string'}) -> reading",
+          "step4": "sys.assert(\"reading.disclaimer == 'For reflection only, not deterministic prediction.'\", 'The required disclaimer must match the declared wording')",
           "step5": "Render reading as Markdown.",
           "constraints": ["Ground the interpretation in the cast hexagram and guide; do not fabricate hexagrams."]
         },
@@ -733,7 +783,7 @@ Use this checklist as a release-readiness aid, not as a substitute for validator
 |-------|---------------|
 | Skill identity | [ ] Legal AISOP program (required fields + `aisop.main`); `protocol: AISP V1.0.0`; `license` present or defaulted to Apache-2.0 |
 | Entry path | [ ] `aisp/<id>/aisp.aisop.json`; `id` equals the folder name and ends with `_aisp` |
-| Contract | [ ] `user.content.aisp_contract` is a real object in the user message; `profile` starts with `aisp.skill.`; contains `invocation` and `non_negotiable` |
+| Contract | [ ] `user.content.aisp_contract` is a real object in the user message; `profile` has versioned form `aisp.skill.v<major>`; contains `invocation` and `non_negotiable` |
 | Run directive | [ ] `instruction` strongly names the contract and then runs the graph, e.g. `STRICTLY OBEY aisp_contract; ... then RUN aisop.main` |
 | Red lines | [ ] Every `non_negotiable.enforced_by` target exists; high-risk actions use `sys.io.confirm` and/or `sys.assert` |
 | Resources | [ ] Resource paths are relative and non-escaping; modes are declared; scripts declare `requires_tools`; remote use is gated |
@@ -742,7 +792,7 @@ Use this checklist as a release-readiness aid, not as a substitute for validator
 | Per-skill README | [ ] Published `*_aisp/README.md` files are generated from `aisp.aisop.json`; strict/release checks may fail missing, manual, drifted, bad-source, or unsupported-generator README files |
 | Runtime | [ ] Runtime reads the contract, preserves it in the user message, honors open-world AISOP compatibility, enforces `enforced_by`, and does not bypass `sys.io.confirm` |
 | Tier A | [ ] Role, principles, and knowledge live in functions; failures live in `aisop.main` / `sys.*`; structured output uses `sys.llm.json`; the graph has an end node |
-| Sidecar bridge | [ ] Same-folder `SKILL.md` is generated by default for authoring/distribution unless explicitly opted out; it uses official fields, legal `name`, safe `aisp.aisop.json` pointer, generated markers, and thin guidance only; it never copies AISP logic |
+| M7 compatibility interface | [ ] Same-folder SKILL.md exists; derived name/description/license and fixed executor-only bootstrap match; only valid launch strings and version policy vary; safe local pointer; no business logic copy or opt-out |
 
 Reference tooling map:
 
@@ -755,7 +805,7 @@ Reference tooling map:
 
 ## 24. Honest Boundaries
 
-1. **The cost of native-only = losing direct runnability on existing platforms**: `SKILL.md` is already supported by Claude Code / Codex / Gemini / Copilot / Cursor; a native AISP skill needs an AISP/AISOP runtime to run. Mitigation = default-generate the same-folder `SKILL.md` sidecar bridge for authoring/distribution while keeping it core-optional (§20). Stated plainly.
+1. **A bridge is not an executor**: the required generated SKILL.md supports discovery and executor handoff, not hard execution by itself. Without an available conforming executor (SoulRun by default), stop rather than self-execute. Installation consent and untrusted-package trust gates remain host/consumer responsibilities (§20).
 2. **Dependency on AISOP's open world** (R4): two points — ① `aisp_contract` / `license` are keys outside the AISOP field table, relying on "tolerate extra keys"; ② the `protocol` value is `AISP V1.0.0`, relying on AISOP "not gating on the protocol value." The AISOP reference implementation satisfies both; but **a closed-world strict validator (rejecting unknown keys), or a tool that hard-checks `protocol == "AISOP V1.0.0"`, will reject** AISP files. The AISOP spec does not mandate such closed validation, but this is AISP's declared dependency.
 3. **The structured payoff is on the machine side** (validation / evolution / registry / Axiom 0 chain + identity consistency), not model adherence; the only real guarantee is policy-as-code (`enforced_by → sys.*`); NL rules are policy-as-prompt (soft).
 4. **Trust is not self-declared**; trust / verified are judged by the runtime / registry / user / scanner.
@@ -765,7 +815,7 @@ Reference tooling map:
 
 ## 25. Common Mistakes
 
-1. A skill embeds / depends on `SKILL.md` to run its logic ✗ → the truth is in `aisp.aisop.json`; `SKILL.md` is only a default-generated but core-optional sidecar bridge.
+1. Putting business logic in SKILL.md or omitting it as "optional" is wrong: business truth stays in aisp.aisop.json, while M7 requires the generated executor-only compatibility interface.
 2. Stuffing the contract into `system_prompt` (JSON-in-string) ✗ → use `user.content.aisp_contract`, a real object.
 3. Non-uniform file name / `id` ≠ folder name / not ending with `_aisp` ✗.
 4. `enforced_by` points to a non-existent `node.stepN:mechanism`, or to metadata such as `node.step_note:mechanism` ✗.
@@ -807,7 +857,7 @@ aisp/
     aisp.aisop.json
     README.md                       # SHOULD: generated from aisp.aisop.json
     data/ | scripts/ | <custom>/    # custom layout, declared in resources
-    SKILL.md                        # optional: Agent Skills sidecar bridge
+    SKILL.md                        # MUST: generated Agent Skills compatibility interface
   _shared/                          # shared resources
 ```
 
@@ -832,11 +882,11 @@ library only) and human-auditable. It MUST NOT: access the network; import
 third-party packages; execute skill scripts; modify any file except
 aisp_list.json when --json is explicitly used; read files outside the aisp/
 directory (except declared _shared metadata). The reference implementation below
-meets all of these: it imports only `json` and `sys` from the stdlib, globs only
-`*_aisp/aisp.aisop.json` under its own directory, and writes only
+meets all of these: it imports only standard-library modules, scans only
+`*_aisp` folders under its own directory, and writes only
 `aisp_list.json`.
 """
-import json, sys
+import json, re, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -850,12 +900,35 @@ Options:
   --help   show this help
 """
 
+def _unique_object(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate JSON key: {key}")
+        value[key] = item
+    return value
+
+
+def _reject_constant(value):
+    raise ValueError(f"non-JSON numeric constant: {value}")
+
+
 def discover():
     skills = []
     errors = []
-    for f in sorted(ROOT.glob("*_aisp/aisp.aisop.json")):
+    for skill_dir in sorted(ROOT.glob("*_aisp")):
+        if not skill_dir.is_dir() and not skill_dir.is_symlink():
+            continue
+        f = skill_dir / "aisp.aisop.json"
         try:
-            data = json.loads(f.read_text(encoding="utf-8-sig"))
+            resolved = f.resolve()
+            if not resolved.is_relative_to(ROOT.resolve()) or not resolved.is_relative_to(skill_dir.resolve()):
+                raise ValueError("skill entry escapes the discovery directory or its skill folder")
+            data = json.loads(f.read_text(encoding="utf-8-sig"), object_pairs_hook=_unique_object, parse_constant=_reject_constant)
+            if (not isinstance(data, list) or len(data) != 2
+                    or any(not isinstance(message, dict) for message in data)
+                    or [message.get("role") for message in data] != ["system", "user"]):
+                raise ValueError("skill must have exactly system/user messages")
             sc = data[0]["content"]                  # system: id/name/summary metadata
             uc = data[1]["content"]                  # user: instruction/aisop/functions + aisp_contract
         except Exception as e:
@@ -867,22 +940,46 @@ def discover():
         if not isinstance(uc, dict):
             errors.append(f"{f}: user.content must be an object")
             continue
+        if not isinstance(sc.get("name"), str) or not sc["name"].strip() or any(
+            key in sc and not isinstance(sc[key], str) for key in ("summary", "description")
+        ):
+            errors.append(f"{f}: name/summary/description metadata has an invalid type")
+            continue
         c = uc.get("aisp_contract", {})              # real object field in the user message
         skill_id = sc.get("id")
-        if not skill_id:
-            errors.append(f"{f}: missing system.content.id")
+        if not isinstance(skill_id, str) or skill_id != skill_dir.name or not re.fullmatch(r"[a-z0-9_]+_aisp", skill_id):
+            errors.append(f"{f}: system.content.id must match the _aisp folder name")
             continue
-        if not isinstance(c, dict) or not str(c.get("profile", "")).startswith("aisp.skill."):
-            errors.append(f"{f}: missing aisp.skill.* profile")
+        if not isinstance(c, dict) or not isinstance(c.get("profile"), str) or not re.fullmatch(r"aisp\.skill\.v[0-9]+", c["profile"]):
+            errors.append(f"{f}: missing versioned aisp.skill.v<major> profile")
+            continue
+        discovery = c.get("discovery", {})
+        invocation = c.get("invocation")
+        if not isinstance(discovery, dict) or not isinstance(invocation, dict):
+            errors.append(f"{f}: discovery and invocation must be objects")
+            continue
+        if "risk_level" in c and c["risk_level"] not in ("low", "medium", "high", "critical"):
+            errors.append(f"{f}: risk_level has an invalid value")
+            continue
+        if any(not isinstance(invocation.get(k), list) or not invocation[k]
+               or any(not isinstance(v, str) for v in invocation[k])
+               for k in ("when_to_use", "when_not_to_use")):
+            errors.append(f"{f}: invocation lists must be non-empty string arrays")
+            continue
+        if ("category" in discovery and not isinstance(discovery["category"], str)) or (
+            "tags" in discovery and (not isinstance(discovery["tags"], list)
+                                     or any(not isinstance(tag, str) for tag in discovery["tags"]))
+        ):
+            errors.append(f"{f}: category/tags metadata has an invalid type")
             continue
         skills.append({
             "id": skill_id,
             "name": sc.get("name"),
             "summary": sc.get("summary") or sc.get("description", ""),
             "path": str(f.relative_to(ROOT.parent)).replace("\\", "/"),
-            "category": c.get("discovery", {}).get("category"),
-            "tags": c.get("discovery", {}).get("tags", []),
-            "when_to_use": c.get("invocation", {}).get("when_to_use", []),
+            "category": discovery.get("category"),
+            "tags": discovery.get("tags", []),
+            "when_to_use": invocation["when_to_use"],
             "risk_level": c.get("risk_level"),
         })
     return skills, errors
@@ -914,20 +1011,33 @@ def main():
         print(f"- {s['id']}: {s['summary']}  ->  {s['path']}")
     print(f"\n{len(skills)} AISP skill(s).")
     expected = render_index(skills)
+    out = ROOT / "aisp_list.json"
+    if ("--check" in sys.argv or "--json" in sys.argv) and out.is_symlink():
+        print("ERROR: aisp_list.json must not be a symbolic link", file=sys.stderr)
+        return 1
     if "--check" in sys.argv:
-        out = ROOT / "aisp_list.json"
         if not out.exists():
             print(f"{out} is missing; run python -B aisp_list.py --json", file=sys.stderr)
             return 1
-        actual = out.read_text(encoding="utf-8-sig")
+        try:
+            actual = out.read_text(encoding="utf-8-sig")
+        except (OSError, UnicodeError) as exc:
+            print(f"ERROR: cannot read aisp_list.json: {exc}", file=sys.stderr)
+            return 1
         if normalized(actual) != normalized(expected):
             print(f"{out} is stale; run python -B aisp_list.py --json", file=sys.stderr)
             return 1
         print("aisp_list.json ok")
         return 0
     if "--json" in sys.argv:
-        out = ROOT / "aisp_list.json"
-        out.write_text(expected, encoding="utf-8", newline="\n")
+        try:
+            if out.exists() and out.stat().st_nlink > 1:
+                print("ERROR: refusing to overwrite a hardlinked aisp_list.json", file=sys.stderr)
+                return 1
+            out.write_text(expected, encoding="utf-8", newline="\n")
+        except OSError as exc:
+            print(f"ERROR: cannot write aisp_list.json: {exc}", file=sys.stderr)
+            return 1
         print(f"Wrote {out}")
     return 0
 
@@ -967,10 +1077,10 @@ if __name__ == "__main__":
 
 ```text
 AISP = AI Skill Protocol (V1.0.0).
-Skill = aisp/<id>_aisp/aisp.aisop.json + custom resources + _shared/. No core-required SKILL.md; authoring/distribution SHOULD include a same-folder sidecar by default unless opted out.
+Skill = aisp/<id>_aisp/aisp.aisop.json + required same-folder generated SKILL.md + declared resources (including shared resources when used). M7 checks existence, derived header and fixed bootstrap; no opt-out.
 Contract = user.content.aisp_contract (real object): invocation + non_negotiable.enforced_by + discovery + risk_level + resources.
 Everything else → aisop.main / functions / sys.*. system_prompt may be empty.
-Execution = AISOP. Lifecycle (generation/evolution/distribution) = AISP-native, tool-agnostic. Complementary to Agent Skills (default-generated but core-optional SKILL.md sidecar).
+Execution = AISOP through a conforming executor, SoulRun by default; no executor means stop, not self-execution. Lifecycle remains AISP-native and tool-agnostic. Agent Skills supplies the required compatibility interface, not business truth or trust.
 Hard rules only via enforced_by → sys.*. Trust is never self-declared.
 ```
 

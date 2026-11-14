@@ -1,16 +1,16 @@
 # 一致性检查指南
 
-AISP 技能通过一套一致性框架检查：技能规则 **M1-M6**、runtime 规则 **R1-R7**，以及 **SE**（安全）和 **EC**（生态）扩展。本指南说明如何检查一个技能、阅读结果，并修复常见违规。与运行时测试不同，一致性检查是执行前门禁：技能在运行前先被验证。
+AISP 技能通过一套一致性框架检查：技能规则 **M1-M7**、runtime 规则 **R1-R7**，以及 **SE**（安全）和 **EC**（生态）扩展。本指南说明如何检查一个技能、阅读结果，并修复常见违规。静态一致性是执行前的一致性门禁，不证明运行期强制机制或业务行为已经验证。
 
 ---
 
 ## 概览
 
-一个一致的 AISP 技能首先必须是**合法 AISOP V1.0.0 程序**（M1），然后才满足额外的技能包规则 M2-M6。规则来源如下：
+一个一致的 AISP 技能首先必须是**合法 AISOP V1.0.0 程序**（M1），然后满足 M2～M7，包括必需的生成式兼容接口。规则来源如下：
 
 | 系列 | 来源 | 范围 |
 |------|------|------|
-| M1-M6 | `AISP_Standard.core` | 技能一致性（违规为 FAIL） |
+| M1-M7 | `AISP_Standard.core` | 技能一致性（违规为 FAIL） |
 | R1-R7 | `AISP_Standard.core` | Runtime 一致性 |
 | SE1-SE8, ST1-ST6 | `AISP_Standard.security` | 安全 + 威胁分类 |
 | EC1-EC8 | `AISP_Standard.ecosystem` | `aisp/` 目录 + 生命周期复用 + 生成式技能 README |
@@ -54,21 +54,22 @@ python -B tools/aisp_readme.py examples/aisp/yijing_aisp --write
 python -B tools/aisp_skill_md.py examples/aisp/yijing_aisp --write
 ```
 
-验证器覆盖 M1-M6 与 SE/EC 的静态部分。运行时一致性证据通过 `aisp_check_runtime_trace.py` 从 trace JSON 检查；真实 runtime harness 可以输出该 trace 形状。`enforced_by: tools` 在纯静态模式下是条件性保证，只能由带事件证据的 runtime trace 或带 provenance 的 tool capability artifact 消解；`--strict-tools` 会拒绝裸 hard 自报。Registry/provenance 哈希通过 `aisp_hash.py` 生成。单技能 README 投影由 `aisp_readme.py` 生成和检查；检查通过只证明一致性，不证明可信或安全。默认但 core 可选的 Agent Skills sidecar 由 `aisp_skill_md.py` 生成，并由 `aisp_validate_agent_skill_bridge.py` 检查；生成/bridge 检查通过只证明投影一致、sidecar 形状正确且原生 AISP 通过验证，不证明外部信任。缺少 sidecar 在 core 校验里是 EC7 warning，不是 core failure；只有更严格发布 profile 要求默认 sidecar 时才升级。
+验证器覆盖 M1～M7 与静态 SE/EC。运行 trace 由 `aisp_check_runtime_trace.py` 检查；`--strict-tools` 拒绝裸 hard 自报，并要求现有事件/provenance 证据。`aisp_hash.py` 生成发布哈希，不授予信任；README 检查只证明派生一致性。必需的生成式 SKILL.md 由核心与桥共同使用的只读 M7 函数检查：文件存在、派生头部、固定引导正文、五个合法命令字符串及冻结版本策略。缺失、旧版、漂移均 FAIL，无 opt-out。格式通过不认证执行器、安全、信任或执行完成；执行 MUST 使用合规执行器，默认 SoulRun，不能宿主自行执行。
 
 ### 第 1 步：确认它是合法 AISOP 程序（M1）
 
-解析 `aisp.aisop.json`。它 MUST 是 2-message array；`data[0].content` MUST 包含 `protocol == "AISP V1.0.0"`，以及 `axiom_0` / `id` / `name` / `version` / `flow_format`；`data[1].content` MUST 包含 `instruction` / `aisop.main` / `functions`。`license` SHOULD 存在。
+解析 `aisp.aisop.json`。它 MUST 是 2-message array；`data[0].content` MUST 包含 `protocol == "AISP V1.0.0"`、`loading_mode == "node"`，以及 `axiom_0` / `id` / `name` / `version` / `flow_format`；`data[1].content` MUST 包含 `instruction` / `aisop.main` / `functions`。每个函数需要字符串类型的数字 `stepN`；显式 `execute_mode` 只能为 `inline` 或 `agent`，省略时回退 inline 并 warning。`license` SHOULD 存在。
 
-### 第 2 步：检查技能包规则（M2-M6）
+### 第 2 步：检查技能包规则（M2-M7）
 
 | 规则 | 检查 |
 |------|------|
 | **M2** | 文件夹名 == `id`，以 `_aisp` 结尾；文件名为 `aisp.aisop.json` |
-| **M3** | `user.content.aisp_contract` 是真 object；`profile` 以 `aisp.skill.` 开头；包含 `invocation` + `non_negotiable` |
+| **M3** | `user.content.aisp_contract` 是真 object；`profile` 为带版本的 `aisp.skill.v<major>`；包含 `invocation` + `non_negotiable` |
 | **M4** | 每条 `non_negotiable.enforced_by` 都指向实际存在的机制 |
 | **M5** | 每条 `resources[].path` 是相对路径、无 `../`；`mode` 在枚举内；脚本声明 `requires_tools` |
 | **M6** | 不自报信任（`trusted` / `verified` / `safe`） |
+| **M7** | 必需的同目录 SKILL.md、派生头部、固定执行器引导正文；仅五个合法命令字符串及冻结版本策略可变 |
 
 ### 第 3 步：详细验证红线绑定（M4）
 
@@ -80,7 +81,7 @@ python -B tools/aisp_skill_md.py examples/aisp/yijing_aisp --write
 
 ### 第 4 步：应用安全与生态扩展
 
-运行 SE1-SE8（路径限制、远程资源门禁、mode 门控、最小授权、发现脚本安全、不自报信任、确认不变量、执行期只读）和 EC1-EC8（`aisp/` 目录契约、索引与文件夹一致性、`_shared/` 作用域、provenance、生成、进化安全、sidecar bridge、生成式单技能 README）。
+核对静态 SE/EC 覆盖，并另行评估仅运行期可验证的要求：SE1-SE8 包括路径限制、远程资源门禁、mode 门控、最小授权、发现脚本安全、不自报信任、确认不变量和执行期只读；EC1-EC8 包括目录/索引、共享作用域、provenance、生成、进化、EC7 到 M7 的必需接口映射及生成式 README。静态验证器不会实际执行每条安全规则。
 
 ---
 
@@ -94,8 +95,11 @@ python -B tools/aisp_skill_md.py examples/aisp/yijing_aisp --write
 | M4 | PASS | `aisop.main` 保证 cast -> interpret 顺序；`interpret.step1:sys.assert` 存在；`interpret.step4:sys.assert` 存在 |
 | M5 | PASS | `data/hexagrams.json`、`data/interpretation_guide.md` 均为相对路径、已声明、`read_only` |
 | M6 | PASS | 无自报信任 |
+| M7 | PASS | 生成式接口与技能、执行器配置和固定引导正文一致 |
 
-干净技能会在 M1-M6 上全部 PASS。
+干净技能会在 M1-M7 上全部 PASS。
+
+M4 只检查绑定存在和机制前缀，不求值断言，也不证明条件准确表达了红线。当前免责声明示例比较约定的精确文本，不再仅检查存在，但仍须运行器实际求值；即使业务完成，不支持的表达式或运行器接受的未验证结果仍须明确保留。
 
 ---
 
@@ -107,7 +111,7 @@ python -B tools/aisp_skill_md.py examples/aisp/yijing_aisp --write
 
 **影响。** 这是一个看起来安全、实际不存在的硬保证，是最危险的失败类型之一。
 
-**修复。** 接入真实 `sys.assert` 步骤，或把该规则降级为 `functions.<node>.constraints` 中的普通指导，并从 `non_negotiable` 移除。
+**修复。** 修正绑定，在运行时支持的真实步骤中实现预期检查，再验证通过与失败行为。不能仅为通过校验而删除或弱化红线；有意修改合同须另经人工审查和授权。
 
 ### M5 违规：路径逃逸
 
@@ -143,7 +147,7 @@ python -B tools/aisp_skill_md.py examples/aisp/yijing_aisp --write
 2. **再绑定**：每条红线是否指向真实机制（M4）？
 3. **再安全**：路径受限、无自报信任、确认未被绕过（M5 / M6 / SE7）。
 
-只有 `enforced_by -> sys.*` 是硬保证；模型读到的其它内容都是 policy-as-prompt。
+硬保证要求运行时实际执行所绑定的机制：`sys.*`、图拓扑或真正受限的工具权限。静态绑定或自报 trace 不证明强制执行已经发生。接口只应用一个版本判断：匹配即直接执行；已证实缺失/不匹配才询问安装，安装后复查匹配；探测出错就停止。
 
 ---
 

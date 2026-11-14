@@ -16,7 +16,7 @@
         "L1": "Output helpfully in User's exact language and script variant",
         "output": "L1"
       },
-      "description": "Ecosystem conformance extension for AISP skills: discovery index integrity, the aisp/ directory contract, _shared/ scope, the AISP-native lifecycle (generation / evolution / distribution, tool-agnostic), the default-generated but core-optional same-folder SKILL.md sidecar bridge, and generated per-skill README projections. Loaded on top of AISP_Standard.core. Not an executable flow.",
+      "description": "Ecosystem conformance extension for AISP skills: discovery index integrity, the aisp/ directory contract, _shared/ scope, AISP-native lifecycle, EC7 mapping to the required generated SKILL.md compatibility interface (M7), and generated per-skill README projections. Loaded on top of AISP_Standard.core. Not an executable flow.",
       "fractal_exempt": "Standard library reference module — no executable flow graph.",
       "tools": [],
       "params": {
@@ -35,7 +35,7 @@
             "name": "Index ↔ Folder Consistency",
             "check": "aisp_list.json is a cache derived from the skill folders. The folder is the single source of truth; if the index disagrees, re-running aisp_list.py --json regenerates it to match.",
             "severity": "WARNING",
-            "how_to_verify": "Glob *_aisp/aisp.aisop.json and compare each id/summary/category/tags/when_to_use/risk_level against the corresponding aisp_list.json row. Warn on drift (the folder wins)."
+            "how_to_verify": "Glob *_aisp/aisp.aisop.json and compare each id/name/path/summary/category/tags/when_to_use/risk_level against the corresponding aisp_list.json row. Warn on drift (the folder wins)."
           },
           "EC3": {
             "name": "_shared/ Scope",
@@ -53,7 +53,7 @@
             "name": "Generation",
             "check": "A generator builds aisp/<id>_aisp/aisp.aisop.json (lean contract + rich Tier A) + custom resources, validating id == folder name ending in _aisp, every enforced_by real, resource paths legal, and functions-referenced resources declared; it produces / updates aisp_list.json.",
             "severity": "ADVISORY",
-            "how_to_verify": "Informative: generation is AISP-native and tool-agnostic. A generated skill MUST still satisfy core M1-M6."
+            "how_to_verify": "Informative: generation is AISP-native and tool-agnostic. A generated skill MUST still satisfy core M1-M7."
           },
           "EC6": {
             "name": "Evolution Safety",
@@ -62,14 +62,14 @@
             "how_to_verify": "Across versions: assert no safety constraint was removed, risk_level was not silently lowered, and tools were not expanded without a recorded justification."
           },
           "EC7": {
-            "name": "Default SKILL.md Sidecar Bridge",
-            "check": "A native AISP skill does not require SKILL.md for core conformance. Authoring/scaffold tools and public distribution profiles SHOULD generate a thin same-folder SKILL.md sidecar bridge by default unless the author explicitly opts out. The sidecar only guides loading/running the native aisp.aisop.json (never copies logic; deletable without breaking the skill). Its name is the same-folder AISP id minus _aisp / hyphenated, lowercase, and MUST NOT contain 'anthropic' or 'claude'; description ≤ 1024 and injection-safe. Generated bridges declare metadata.generated_from_aisp: \"true\", metadata.aisp_program: \"aisp.aisop.json\", metadata.protocol: AISP V1.0.0, and SHOULD declare metadata.bridge_mode: native_sidecar.",
-            "severity": "WARNING",
-            "how_to_verify": "Run tools/aisp_validate.py for ecosystem warnings, tools/aisp_skill_md.py --check/--check-all for deterministic sidecar projection consistency, and tools/aisp_validate_agent_skill_bridge.py when a sidecar is expected. If SKILL.md is missing in the default profile, warn but do not fail core conformance. If SKILL.md exists: assert standalone YAML frontmatter; assert top-level frontmatter keys are limited to name, description, license, allowed-tools, and metadata; assert name derives from the same-folder AISP id; assert description is short and injection-safe; assert metadata.generated_from_aisp is true; assert metadata.aisp_program is exactly aisp.aisop.json with no absolute, remote, subdirectory, or traversal path; assert the native AISP program passes reference validation; assert the body states the thin-bridge/source-of-truth boundary and does not duplicate node logic."
+            "name": "Agent Skills Compatibility Interface (Legacy Mapping to M7)",
+            "check": "EC7 maps to core M7: every skill MUST contain the generated same-folder SKILL.md compatibility interface, with no opt-out. metadata.bridge_mode MUST be agent_skills_bridge. The canonical header and executor-only bootstrap are checked; only five launch strings and the frozen version policy may vary. Business logic remains only in aisp.aisop.json; the fixed internal bootstrap is not business logic duplication.",
+            "severity": "FAIL",
+            "how_to_verify": "Run tools/aisp_validate.py, tools/aisp_skill_md.py --check/--check-all, and tools/aisp_validate_agent_skill_bridge.py. Core and bridge use the same nonrecursive read-only M7 checker. Keep frontmatter shape, injection, same-folder path and native package checks. Missing or drifted interfaces fail rather than warn; format success does not certify an executor, runtime execution or external trust."
           },
           "EC8": {
             "name": "Generated Per-Skill README",
-            "check": "Each *_aisp skill SHOULD contain README.md generated from aisp.aisop.json. In strict/release profiles it is treated as MUST. The README is a bootstrap projection only; a successful check proves derivation consistency, not safety or trust. Generic non-AISOP agents can follow it only on a best-effort basis; hard guarantees require a conforming AISOP runtime. Embedded hashes are integrity hints only and never trust claims.",
+            "check": "Each *_aisp skill SHOULD contain README.md generated from aisp.aisop.json. In strict/release profiles it is treated as MUST. README is a package introduction, not execution authority; a successful check proves derivation consistency, not safety or trust. Hosts MUST hand execution to a conforming AISP/AISOP executor, SoulRun by default; without an executor, stop, never execute or continue the skill themselves. Embedded hashes are integrity hints only and never trust claims.",
             "severity": "WARNING",
             "how_to_verify": "Run tools/aisp_readme.py --check or --check-all. Normalize UTF-8 BOM and CRLF/CR to LF before comparing. Warn by default on missing/manual/drifted README, bad source marker, or unsupported generator marker; fail when strict_readme/release mode is active."
           }
@@ -83,7 +83,7 @@
       },
       "summary": "EC1-EC8 ecosystem / lifecycle conformance for the aisp/ directory and the AISP-native, tool-agnostic lifecycle.",
       "loading_mode": "node",
-      "system_prompt": "AISP ecosystem conformance standard. The skill folder is the single source of truth; the index is a cache. AISP's lifecycle (generation, evolution, distribution) is AISP-native and tool-agnostic; AISP defines the package, not the toolchain. SKILL.md is default-generated for authoring/distribution but remains core-optional and never the truth. Mirror User's exact language and script variant.\nAlign Axiom 0: Human Sovereignty and Wellbeing."
+      "system_prompt": "AISP ecosystem conformance standard. The skill folder is the source of truth; the index is a cache. Lifecycle remains AISP-native and tool-agnostic. SKILL.md is a required generated compatibility interface (M7), not business truth or trust. Execution MUST use a conforming AISP/AISOP executor, SoulRun by default; without one, stop, never self-execute or continue. Mirror User's exact language and script variant.\nAlign Axiom 0: Human Sovereignty and Wellbeing."
     }
   }
 ]

@@ -42,7 +42,7 @@ The skill body is a 2-message array. The first message is `system` and holds ide
     "version": "1.0.0",
     "license": "Apache-2.0",
     "summary": "Cast and interpret an I Ching (Yijing) hexagram for a user's question.",
-    "description": "Native AISP skill: clarify the question, cast a hexagram via a deterministic toss, and interpret it for reflection (not deterministic prediction).",
+    "description": "Native AISP skill: clarify the question, cast a hexagram randomly, and interpret it for reflection (not deterministic prediction).",
     "flow_format": "mermaid",
     "loading_mode": "node",
     "tools": ["filesystem", "code"],
@@ -118,8 +118,8 @@ The contract is a **real object** (not a string), in the **user message**, so th
   "interpret": {
     "step1": "sys.assert('hexagram != null', 'No hexagram has been cast')",
     "step2": "sys.io.read('data/interpretation_guide.md') -> guide",
-    "step3": "sys.llm.json('Interpret the hexagram for the question using guide', schema={summary:'string', guidance:'string', changing_lines:'array', disclaimer:'string'}) -> reading",
-    "step4": "sys.assert('reading.disclaimer != null', 'Reading must state it is for reflection, not deterministic prediction')",
+    "step3": "sys.llm.json('Interpret the hexagram for the question using guide; set disclaimer exactly to: For reflection only, not deterministic prediction.', schema={summary:'string', guidance:'string', changing_lines:'array', disclaimer:'string'}) -> reading",
+    "step4": "sys.assert(\"reading.disclaimer == 'For reflection only, not deterministic prediction.'\", 'The required disclaimer must match the declared wording')",
     "step5": "Render reading as Markdown.",
     "constraints": ["Ground the interpretation in the cast hexagram and guide; do not fabricate hexagrams."]
   },
@@ -127,7 +127,7 @@ The contract is a **real object** (not a string), in the **user message**, so th
 }
 ```
 
-Notice the wiring: `interpret.step1` is a `sys.assert`, so the red line `enforced_by: "interpret.step1:sys.assert"` is real; `interpret.step4` is a `sys.assert` on the disclaimer, so that red line is real too; and `aisop.main` orders `cast` before `interpret`, enforcing "never interpret before casting." That is **policy-as-code** — the model reads the red lines (soft), and `sys.*` enforces them (hard).
+These bindings point to existing mechanisms: `interpret.step1` and `interpret.step4` start with `sys.assert`, and the graph orders casting before interpretation. This satisfies static reference checks, not runtime certification. The disclaimer now compares exact declared wording, not merely a non-null field; the runtime still has to evaluate it against the actual output. Use runtime-supported expressions and test the intended failure behavior; do not count unsupported or unverified assertions as hard checks.
 
 ---
 
@@ -144,16 +144,28 @@ Any file a node reads or runs SHOULD be declared in `resources`; an undeclared f
 
 ## Step 5: Verify Your Skill
 
+First generate the required same-folder compatibility interface (from the repository root, using the example path here):
+
+```bash
+python -B tools/aisp_skill_md.py examples/aisp/yijing_aisp --write
+python -B tools/aisp_skill_md.py examples/aisp/yijing_aisp --check
+```
+
+Use your own skill path when authoring elsewhere. The fixed bootstrap delegates to a conforming executor, SoulRun by default; no executor means no execution, not a best-effort host fallback.
+
+Generation freezes the default lower bound once, or accepts an explicit `--executor-version-requirement '>=X.Y.Z'` / `'==X.Y.Z'`. Runtime uses one version condition: matching versions run directly; proven absence/mismatch prompts for installation, followed by a matching recheck. The generator does not install an executor, and normal regeneration does not refresh an existing valid bound.
+
 ### Checklist
 
 | Check | Expected | How to Verify |
 |-------|----------|---------------|
 | M1 | Legal AISOP program | 2-message array; required fields; `aisop.main` present |
 | M2 | Folder/file/suffix | folder == `yijing_aisp`, ends `_aisp`, file `aisp.aisop.json` |
-| M3 | Contract present | `user.content.aisp_contract` is a real object; `profile` starts `aisp.skill.` |
+| M3 | Contract present | `user.content.aisp_contract` is a real object; `profile` has versioned form `aisp.skill.v<major>` |
 | M4 | enforced_by real | each `enforced_by` points to an existing node, numeric execution step, and mechanism |
 | M5 | Resource paths | relative, no `../`; declared files match folder |
 | M6 | No self-trust | no `trusted`/`verified`/`safe` flags |
+| M7 | Required generated interface | same-folder SKILL.md; derived header and fixed bootstrap match, five launch strings plus the frozen version policy valid |
 
 ### Common Mistakes
 
@@ -206,7 +218,7 @@ A complete, conformant AISP skill: a self-contained folder, a 2-message body, a 
 
 - Add a second skill with `data/` + `scripts/`: see [`examples/aisp/stock_analysis_aisp/`](https://github.com/AIXP-Labs/AISP/tree/main/examples/aisp/stock_analysis_aisp).
 - Run a full conformance check: [Conformance Walkthrough](conformance-walkthrough.md).
-- Add the default-but-core-optional `SKILL.md` bridge: [Interoperability with Agent Skills](../topics/interoperability-with-agent-skills.md).
+- Review the required interface, executor configuration and migration rules: [Interoperability with Agent Skills](../topics/interoperability-with-agent-skills.md).
 
 ---
 

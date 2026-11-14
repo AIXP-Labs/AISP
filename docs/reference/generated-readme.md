@@ -39,7 +39,7 @@ python -B tools/aisp_readme.py examples --check-all
 python -B tools/aisp_validate.py --strict-readme examples/aisp
 ```
 
-`SKILL.md` sidecars are a separate generated projection:
+The required same-folder `SKILL.md` compatibility interface is generated separately (M7). Its fixed bootstrap delegates to a conforming executor, SoulRun by default; the business source remains `aisp.aisop.json`:
 
 ```bash
 python -B tools/aisp_skill_md.py examples/aisp/yijing_aisp --write
@@ -49,10 +49,17 @@ python -B tools/aisp_validate_agent_skill_bridge.py examples/aisp --strict-readm
 
 `--write` emits UTF-8 without BOM and LF line endings. `--check` normalizes UTF-8 BOM, CRLF, and CR before comparing, so Windows checkout line endings do not create false drift.
 
+Both generators share strict business-JSON loading and reject symbolic-link
+output files. Writes replace each file atomically, so existing hardlinks are
+not truncated in place. Batch writes prepare every projection before changing
+any file; a later I/O failure reports earlier completed writes. The batch is
+not one transaction, and this is not isolation against hostile concurrent
+directory replacement.
+
 A passing `--check` means only:
 
 ```text
-The committed README matches the deterministic projection from the current aisp.aisop.json.
+The local README matches the deterministic projection from the current aisp.aisop.json.
 ```
 
 It does not mean:
@@ -60,6 +67,8 @@ It does not mean:
 ```text
 The skill is trusted, safe, registry-approved, or runtime-conformant.
 ```
+
+The check does not inspect commit history or prove that the local file has been committed or published.
 
 ---
 
@@ -90,19 +99,22 @@ Validation behavior:
 Generated READMEs include:
 
 - `contract_sha256`;
+- `program_sha256` (the complete two-message program);
 - `resources_sha256`.
 
-They intentionally do not embed `package_sha256`. A README is part of the distributed package, so embedding a package hash in the README creates a self-referential hash problem. Publication-time package hashes belong in external registry/provenance artifacts and must not depend on host-local paths.
+They intentionally do not embed `package_sha256`: publication-time manifests are external artifacts. The current manifest covers the program and declared resources, not every archive byte. Declaring the generated README as its own hashed resource would create a self-reference; keep generated projections outside their own hash inputs. Hashes must not depend on host-local paths.
 
 Hashes prove local integrity only. They do not prove trust, safety, endorsement, registry approval, or runtime conformance. A malicious package can still generate consistent hashes for malicious content.
+
+Manifest 1.1 adds full-program binding; legacy 1.0 does not bind business-function-only edits. Neither version automatically binds all generated SKILL.md bytes or its five launch strings plus the frozen version policy. Review/pin the actual interface separately; do not treat a matching package hash as approval of its commands.
 
 ---
 
 ## Generic AI Boundary
 
-A generic AI or non-AISOP agent can use a generated README only as best-effort bootstrap guidance.
+A generic AI or non-AISOP host can browse a generated README, but MUST hand execution through the required interface to a conforming AISP/AISOP executor. Without an executor, stop; do not execute or continue the skill yourself. Executor-mediated reads and user-requested code review are allowed. The installation confirmation before an executor exists depends on the host's controls.
 
-Hard guarantees require a conforming AISOP runtime, including:
+Hard guarantees require a conforming AISP/AISOP executor, including:
 
 - `sys.assert`;
 - `sys.io.confirm`;
@@ -124,7 +136,7 @@ The README must not override:
 - `aisp_contract.resources`;
 - `aisp_contract.non_negotiable`.
 
-If the README and `aisp.aisop.json` disagree, regenerate the README and trust `aisp.aisop.json`.
+If the README and `aisp.aisop.json` disagree, review the intended business program and regenerate the projection. The program is the content source of truth, not proof that the package is trustworthy; external provenance or a human trust decision is still required.
 
 ---
 

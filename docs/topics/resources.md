@@ -24,6 +24,7 @@ The contract's `resources` array declares *what exists, where, what kind, and re
 | `mode` | MUST | **Controlled enum**: `read_only` / `execute_only` / `read_and_execute` |
 | `when` | MAY | When to load (e.g. "interpreting the hexagram") |
 | `scope` | MAY | `skill` (default) / `shared` |
+| `sha256` | MAY | Optional content hash; recommended for registry distribution, not a trust proof |
 | `requires_tools` | MAY | Tools a script needs (least authority) |
 
 Example:
@@ -70,6 +71,40 @@ A common mistake is to reverse these.
 - `read_only` resources are **not executed**.
 - `execute_only` scripts are **not injected in full** into the model context.
 - `read_and_execute` permits both.
+
+The reference static checker recognizes selected literal `sys.io.read`,
+`sys.run` and `sys.run.bg` calls, including whitespace before `(` and ordinary
+quoted Python script paths. Path matching normalizes redundant separators and
+`.` components while preserving dotfiles, absolute prefixes and `..` escapes.
+Dynamic expressions, arbitrary command syntax and actual runtime compliance
+are not proved by that matching.
+
+For supported Python calls the checker selects the file operand, not an arbitrary
+later `.py` argument; standard-library option parsing handles supported option
+clusters, values and `-c`/`-m`/help modes. Direct file commands and simple
+`bash`/`sh` filename forms are recognized; arbitrary external tools' file
+arguments are not assumed to execute. Unsupported syntax remains outside
+coverage, not evidence of safety. This does not validate a complete interpreter
+CLI or prove what every command does.
+Normalized aliases of the same resolved file cannot declare conflicting modes:
+the checker fails rather than silently overwriting or widening permissions.
+Aliases with the same mode remain allowed; there is no blanket duplicate ban.
+Conflict detection is independent of inventory order or intervening scope entries.
+
+Distinct skill/shared resources may have the same relative name. Both declarations
+remain valid and count toward the inventory; when a literal use cannot identify
+one scoped target, the checker considers all declared modes, not whichever
+entry happened to come last. If all candidates forbid the operation, SE3 fails;
+ambiguity cannot waive a definite violation. Otherwise
+`AISP_W_M5_AMBIGUOUS_USE` records unresolved scope without choosing a target,
+merging permissions or proving runtime enforcement. Even if all candidates
+permit the operation, that warning still records the unknown scoped target.
+Runtime resolution and enforcement require separate evidence.
+
+A missing declared file retains its declaration in this mode analysis and emits
+the separate M5 missing-resource warning. Availability does not grant permission:
+the checker neither drops a missing candidate to choose another scope nor uses
+its absence to waive an all-candidates-forbid violation.
 
 ---
 

@@ -1,9 +1,17 @@
+[build-system]
+requires = ["setuptools>=84.1.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["tools"]
+include-package-data = false
+
 [project]
 name = "aisp-protocol-tools"
 version = "1.0.0"
 description = "Zero-dependency validation tooling for the AISP protocol repository."
 requires-python = ">=3.11"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
 
 # Runtime tools are zero-dependency; jsonschema is only needed to exercise the
 # contract and machine-artifact JSON Schemas in the test suite.

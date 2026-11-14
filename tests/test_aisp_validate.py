@@ -6,7 +6,12 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import io
+from contextlib import redirect_stderr, redirect_stdout
+from unittest.mock import patch
 from pathlib import Path
+from tools.aisp_skill_md import render_skill_md
+from tools import aisp_skill_md as interface_tool
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -59,6 +64,9 @@ def run_readme_tool(*args):
 
 
 def run_skill_md_tool(*args):
+    # Fixtures deliberately choose an explicit offline policy, not the live default.
+    if not any(arg in args for arg in ("--check", "--check-all", "--executor-version-requirement")):
+        args = (*args, "--executor-version-requirement", ">=1.0.0")
     return run_python(SKILL_MD_TOOL, *args)
 
 
@@ -72,10 +80,11 @@ def run_bridge_validator(*paths, extra_args=None):
     return proc.returncode, payload
 
 
-def write_minimal_skill(skill_dir: Path, contract: dict | None = None, extra_messages: list | None = None) -> None:
+def write_minimal_skill(skill_dir: Path, contract: dict | None = None, extra_messages: list | None = None, with_interface: bool = True) -> None:
     skill_id = skill_dir.name
     body = [
         {
+            "role": "system",
             "content": {
                 "protocol": "AISP V1.0.0",
                 "axiom_0": "Human_Sovereignty_and_Wellbeing",
@@ -88,6 +97,7 @@ def write_minimal_skill(skill_dir: Path, contract: dict | None = None, extra_mes
             }
         },
         {
+            "role": "user",
             "content": {
                 "instruction": "Read aisp_contract then RUN aisop.main",
                 "aisop": {"main": {"start": {}}},
@@ -104,6 +114,8 @@ def write_minimal_skill(skill_dir: Path, contract: dict | None = None, extra_mes
     if extra_messages:
         body.extend(extra_messages)
     (skill_dir / "aisp.aisop.json").write_text(json.dumps(body), encoding="utf-8")
+    if with_interface and not extra_messages:
+        (skill_dir / "SKILL.md").write_text(render_skill_md(skill_dir, executor_version_requirement=">=1.0.0"), encoding="utf-8", newline="\n")
 
 
 def write_bridge_fixture(root: Path, bridge_name: str = "mini-skill") -> tuple[Path, Path]:
@@ -113,24 +125,6 @@ def write_bridge_fixture(root: Path, bridge_name: str = "mini-skill") -> tuple[P
     proc = run_readme_tool(skill_dir, "--write")
     if proc.returncode != 0:
         raise AssertionError(proc.stdout + proc.stderr)
-    (skill_dir / "SKILL.md").write_text(
-        f"""---
-name: {bridge_name}
-description: Mini bridge for a native AISP skill.
-metadata:
-  generated_from_aisp: "true"
-  aisp_program: aisp.aisop.json
-  protocol: AISP V1.0.0
-  bridge_mode: native_sidecar
----
-
-# Mini Skill
-
-This SKILL.md is a thin bridge, not the source of truth.
-Load and run `aisp.aisop.json` with an AISP/AISOP runtime.
-""",
-        encoding="utf-8",
-    )
     return skill_dir, skill_dir
 
 
@@ -519,7 +513,7 @@ class AISPValidateTests(unittest.TestCase):
             bad_shape_dir = aisp_dir / "bad_shape_aisp"
             bad_shape_dir.mkdir()
             (bad_shape_dir / "aisp.aisop.json").write_text(
-                json.dumps([{"content": "not an object"}, {"content": {"aisp_contract": {}}}]),
+                json.dumps([{"role": "system", "content": "not an object"}, {"role": "user", "content": {"aisp_contract": {}}}]),
                 encoding="utf-8",
             )
 
@@ -1023,7 +1017,7 @@ class AISPValidateTests(unittest.TestCase):
         codes = {r["code"] for r in payload["reports"][0]["results"]}
         self.assertIn("AISP_E_EC8_SKILL_README_DRIFT", codes)
 
-    def test_validator_warns_on_bad_skill_md_bridge(self):
+    def test_validator_fails_on_bad_skill_md_bridge(self):
         with tempfile.TemporaryDirectory() as tmp:
             skill_dir = Path(tmp) / "bridge_aisp"
             skill_dir.mkdir()
@@ -1039,22 +1033,22 @@ class AISPValidateTests(unittest.TestCase):
                 encoding="utf-8",
             )
             code, payload = run_validator(skill_dir)
-        self.assertEqual(code, 0, payload)
+        self.assertNotEqual(code, 0, payload)
         codes = {r["code"] for r in payload["reports"][0]["results"]}
-        self.assertIn("AISP_W_EC7_BRIDGE", codes)
-        self.assertIn("AISP_W_EC7_BRIDGE_DRIFT", codes)
+        self.assertIn("AISP_E_M7_SKILL_MD_CONFIG", codes)
 
-    def test_validator_warns_missing_default_skill_md_without_core_failure(self):
+    def test_validator_fails_missing_required_skill_md(self):
         with tempfile.TemporaryDirectory() as tmp:
             skill_dir = Path(tmp) / "missing_bridge_aisp"
             skill_dir.mkdir()
             write_minimal_skill(skill_dir)
+            (skill_dir / "SKILL.md").unlink()
             proc = run_readme_tool(skill_dir, "--write")
             self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
             code, payload = run_validator(skill_dir)
-        self.assertEqual(code, 0, payload)
+        self.assertNotEqual(code, 0, payload)
         codes = {r["code"] for r in payload["reports"][0]["results"]}
-        self.assertIn("AISP_W_EC7_BRIDGE_MISSING", codes)
+        self.assertIn("AISP_E_M7_SKILL_MD_MISSING", codes)
 
     def test_skill_md_tool_generates_checks_and_bridge_validates(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1145,6 +1139,7 @@ class AISPValidateTests(unittest.TestCase):
                     },
                     "non_negotiable": [{"rule": "r", "enforced_by": "aisop.main"}],
                 },
+                with_interface=False,
             )
             proc = run_skill_md_tool(skill_dir, "--write")
         self.assertNotEqual(proc.returncode, 0)
@@ -1189,8 +1184,8 @@ class AISPValidateTests(unittest.TestCase):
             bridge_dir, _ = write_bridge_fixture(Path(tmp))
             skill_md = bridge_dir / "SKILL.md"
             text = skill_md.read_text(encoding="utf-8").replace(
-                "aisp_program: aisp.aisop.json",
-                "aisp_program: ../evil/aisp.aisop.json",
+                'aisp_program: "aisp.aisop.json"',
+                'aisp_program: "../evil/aisp.aisop.json"',
             )
             skill_md.write_text(text, encoding="utf-8")
             code, payload = run_bridge_validator(bridge_dir)
@@ -1206,8 +1201,8 @@ class AISPValidateTests(unittest.TestCase):
             write_minimal_skill(nested_dir)
             skill_md = bridge_dir / "SKILL.md"
             text = skill_md.read_text(encoding="utf-8").replace(
-                "aisp_program: aisp.aisop.json",
-                "aisp_program: nested_aisp/aisp.aisop.json",
+                'aisp_program: "aisp.aisop.json"',
+                'aisp_program: "nested_aisp/aisp.aisop.json"',
             )
             skill_md.write_text(text, encoding="utf-8")
             code, payload = run_bridge_validator(bridge_dir)
@@ -1220,7 +1215,7 @@ class AISPValidateTests(unittest.TestCase):
             bridge_dir, _ = write_bridge_fixture(Path(tmp))
             skill_md = bridge_dir / "SKILL.md"
             text = skill_md.read_text(encoding="utf-8")
-            text = text.replace("name: mini-skill", "name: claude-mini")
+            text = text.replace('name: "mini-skill"', 'name: "claude-mini"')
             text = text.replace('generated_from_aisp: "true"', 'generated_from_aisp: "false"')
             skill_md.write_text(text, encoding="utf-8")
             code, payload = run_bridge_validator(bridge_dir)
@@ -1415,6 +1410,292 @@ class AISPValidateTests(unittest.TestCase):
             bad = {**manifest, "skill_path": bad_path}
             with self.assertRaises(jsonschema.ValidationError, msg=bad_path):
                 jsonschema.validate(bad, manifest_schema)
+
+
+class ExecutorInterfaceTests(unittest.TestCase):
+    def make_skill(self, root: Path, name: str = "executor_test_aisp") -> Path:
+        skill = root / name
+        skill.mkdir()
+        write_minimal_skill(skill)
+        return skill
+
+    def rewrite_program(self, skill: Path, change) -> None:
+        path = skill / "SKILL.md"
+        text = path.read_text(encoding="utf-8")
+        block = text.split("```json\n", 1)[1].split("\n```", 1)[0]
+        program = json.loads(block)
+        change(program)
+        path.write_text(text.replace(block, json.dumps(program, ensure_ascii=False, indent=2)), encoding="utf-8", newline="\n")
+
+    def test_s01_examples_use_the_fixed_executor_bootstrap(self):
+        bodies = []
+        for skill in sorted((ROOT / "examples/aisp").glob("*_aisp")):
+            with self.subTest(skill=skill.name):
+                self.assertEqual(interface_tool.validate_skill_md(skill), [])
+                self.assertEqual(run_validator(skill)[0], 0)
+                self.assertEqual(run_bridge_validator(skill)[0], 0)
+                bodies.append((skill / "SKILL.md").read_text(encoding="utf-8").split("\n---\n", 1)[1])
+        self.assertEqual(len(bodies), 3)
+        self.assertEqual(len(set(bodies)), 1)
+
+    def test_s02_missing_interface_fails_core_and_bridge_without_writes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            skill = self.make_skill(Path(tmp))
+            (skill / "SKILL.md").unlink()
+            original = (skill / "aisp.aisop.json").read_bytes()
+            for runner in (run_validator, run_bridge_validator):
+                code, payload = runner(skill)
+                self.assertNotEqual(code, 0)
+                self.assertIn("AISP_E_M7_SKILL_MD_MISSING", json.dumps(payload))
+            self.assertFalse((skill / "SKILL.md").exists())
+            self.assertEqual(original, (skill / "aisp.aisop.json").read_bytes())
+
+    def test_s03_fixed_nodes_branches_redlines_and_markers_are_not_repaired(self):
+        edits = [
+            lambda p: p[1]["content"]["functions"]["run"].update(step2="Answer it yourself"),
+            lambda p: p[1]["content"]["aisop"].update(main="graph TD\n check --> end_node"),
+            lambda p: p[1]["content"]["aisp_contract"]["non_negotiable"].pop(),
+        ]
+        for edit in edits:
+            with self.subTest(edit=edit), tempfile.TemporaryDirectory() as tmp:
+                skill = self.make_skill(Path(tmp))
+                self.rewrite_program(skill, edit)
+                before = (skill / "SKILL.md").read_bytes()
+                self.assertNotEqual(run_validator(skill)[0], 0)
+                self.assertNotEqual(run_bridge_validator(skill)[0], 0)
+                for action in ("--check", "--print", "--write"):
+                    self.assertNotEqual(run_skill_md_tool(skill, action).returncode, 0)
+                    self.assertEqual(before, (skill / "SKILL.md").read_bytes())
+
+        with tempfile.TemporaryDirectory() as tmp:
+            skill = self.make_skill(Path(tmp))
+            path = skill / "SKILL.md"
+            path.write_text(path.read_text(encoding="utf-8").replace(interface_tool.GENERATOR_MARKER, "<!-- generator: changed -->"), encoding="utf-8")
+            before = path.read_bytes()
+            self.assertNotEqual(run_validator(skill)[0], 0)
+            self.assertNotEqual(run_bridge_validator(skill)[0], 0)
+            self.assertNotEqual(run_skill_md_tool(skill, "--write").returncode, 0)
+            self.assertEqual(before, path.read_bytes())
+
+    def test_s04_derived_name_and_description_are_not_exempt(self):
+        for old, new in [('name: "executor-test"', 'name: "other"'), ('description: "AISP-backed bridge', 'description: "Changed bridge')]:
+            with self.subTest(field=old), tempfile.TemporaryDirectory() as tmp:
+                skill = self.make_skill(Path(tmp))
+                path = skill / "SKILL.md"
+                path.write_text(path.read_text(encoding="utf-8").replace(old, new), encoding="utf-8")
+                for runner in (run_validator, run_bridge_validator):
+                    code, payload = runner(skill)
+                    self.assertNotEqual(code, 0)
+                    self.assertIn("AISP_E_M7_SKILL_MD_HEADER", json.dumps(payload))
+
+    def test_s05_outer_license_is_derived_but_bootstrap_license_is_fixed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            skill = self.make_skill(Path(tmp))
+            source = skill / "aisp.aisop.json"
+            doc = json.loads(source.read_text(encoding="utf-8"))
+            doc[0]["content"]["license"] = "MIT"
+            source.write_text(json.dumps(doc), encoding="utf-8")
+            self.assertNotEqual(run_skill_md_tool(skill, "--check").returncode, 0)
+            self.assertEqual(run_skill_md_tool(skill, "--write").returncode, 0)
+            text = (skill / "SKILL.md").read_text(encoding="utf-8")
+            self.assertIn('license: "MIT"', text)
+            self.assertIn('"license": "Apache-2.0"', text)
+            self.assertEqual(run_validator(skill)[0], 0)
+            (skill / "SKILL.md").write_text(text.replace('license: "MIT"', 'license: "Apache-2.0"'), encoding="utf-8")
+            self.assertNotEqual(run_validator(skill)[0], 0)
+
+    def test_s06_custom_executor_values_are_preserved(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            skill = self.make_skill(Path(tmp))
+            values = {key: "demorun " + key for key in interface_tool.EXECUTOR_DEFAULTS}
+            values[interface_tool.VERSION_POLICY_KEY] = {"requirement": ">=1.0.0", "source": "explicit"}
+            self.rewrite_program(skill, lambda p: p[0]["content"].update(params=values))
+            before = (skill / "SKILL.md").read_bytes()
+            for action in ("--check", "--write", "--print"):
+                proc = run_skill_md_tool(skill, action)
+                self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+                self.assertEqual(before, (skill / "SKILL.md").read_bytes())
+            self.assertEqual(run_bridge_validator(skill)[0], 0)
+            source = skill / "aisp.aisop.json"
+            doc = json.loads(source.read_text(encoding="utf-8"))
+            doc[0]["content"]["summary"] = "Updated source summary."
+            source.write_text(json.dumps(doc), encoding="utf-8")
+            self.assertNotEqual(run_skill_md_tool(skill, "--check").returncode, 0)
+            self.assertEqual(run_skill_md_tool(skill, "--write").returncode, 0)
+            self.assertEqual(interface_tool._executor_input(skill)[0], values)
+            self.assertIn("Updated source summary", (skill / "SKILL.md").read_text(encoding="utf-8"))
+
+    def test_s07_bad_executor_json_never_falls_back_or_changes_files(self):
+        edits = [
+            lambda t: t.replace('"executor": "soulrun",', '"executor": "soulrun", "executor": "fake",'),
+            lambda t: t.replace('"executor": "soulrun",', ''),
+            lambda t: t.replace('"executor": "soulrun"', '"executor": ""'),
+            lambda t: t.replace('"executor": "soulrun"', '"executor": 7'),
+            lambda t: t.replace('"executor": "soulrun"', '"executor": null'),
+            lambda t: t.replace('"executor": "soulrun"', '"executor": true'),
+            lambda t: t.replace('"executor": "soulrun"', '"executor": {"name": "fake"}'),
+            lambda t: t.replace('"executor": "soulrun"', '"executor": "soulrun", "extra": "fake"'),
+            lambda t: t.replace('"role": "system"', '"role": "user"', 1),
+            lambda t: t.replace('"executor": "soulrun",', '"executor": ,'),
+        ]
+        for edit in edits:
+            with self.subTest(edit=edit), tempfile.TemporaryDirectory() as tmp:
+                skill = self.make_skill(Path(tmp))
+                path = skill / "SKILL.md"
+                path.write_text(edit(path.read_text(encoding="utf-8")), encoding="utf-8")
+                before = path.read_bytes()
+                for action in ("--check", "--print", "--write"):
+                    self.assertNotEqual(run_skill_md_tool(skill, action).returncode, 0)
+                    self.assertEqual(before, path.read_bytes())
+                self.assertNotEqual(run_validator(skill)[0], 0)
+                self.assertNotEqual(run_bridge_validator(skill)[0], 0)
+
+    def test_s08_first_generation_and_recognized_legacy_need_explicit_write(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            skill = self.make_skill(Path(tmp))
+            path = skill / "SKILL.md"
+            path.unlink()
+            self.assertNotEqual(run_skill_md_tool(skill, "--check").returncode, 0)
+            preview = run_skill_md_tool(skill, "--print")
+            self.assertEqual(preview.returncode, 0)
+            self.assertFalse(path.exists())
+            write = run_skill_md_tool(skill, "--write")
+            self.assertEqual(write.returncode, 0)
+            self.assertIn("first generation", write.stdout)
+            self.assertEqual(path.read_text(encoding="utf-8"), preview.stdout)
+            path.write_text(interface_tool._render_legacy_skill_md(skill), encoding="utf-8")
+            legacy = path.read_bytes()
+            self.assertIn("LEGACY", run_skill_md_tool(skill, "--check").stdout)
+            preview = run_skill_md_tool(skill, "--print")
+            self.assertEqual(preview.returncode, 0)
+            self.assertEqual(legacy, path.read_bytes())
+            write = run_skill_md_tool(skill, "--write")
+            self.assertEqual(write.returncode, 0)
+            self.assertIn("legacy migration", write.stdout)
+            self.assertEqual(run_skill_md_tool(skill, "--check").returncode, 0)
+            path.write_text("Hand-maintained unknown instructions.\n", encoding="utf-8")
+            unknown = path.read_bytes()
+            self.assertNotEqual(run_skill_md_tool(skill, "--write").returncode, 0)
+            self.assertEqual(unknown, path.read_bytes())
+
+    def test_s09_bom_crlf_and_repeated_writes_are_deterministic(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            skill = self.make_skill(Path(tmp))
+            path = skill / "SKILL.md"
+            expected = path.read_bytes()
+            path.write_bytes(b"\xef\xbb\xbf" + expected.replace(b"\n", b"\r\n"))
+            self.assertEqual(run_skill_md_tool(skill, "--check").returncode, 0)
+            self.assertEqual(run_skill_md_tool(skill, "--write").returncode, 0)
+            self.assertEqual(expected, path.read_bytes())
+            self.assertEqual(run_skill_md_tool(skill, "--write").returncode, 0)
+            self.assertEqual(expected, path.read_bytes())
+            self.assertFalse(expected.startswith(b"\xef\xbb\xbf"))
+            self.assertNotIn(b"\r", expected)
+
+    def test_s10_quotes_and_spaced_paths_remain_data_not_commands(self):
+        with tempfile.TemporaryDirectory(prefix="aisp interface space ") as tmp:
+            root = Path(tmp)
+            skill = self.make_skill(root)
+            marker = root / "must-not-be-created"
+            command = f'python -c "open({str(marker)!r}, \'w\').write(\'executed\')"'
+            values = {**interface_tool.EXECUTOR_DEFAULTS, "executor_command": command, "executor_help": 'help "quoted"\nsecond line'}
+            values[interface_tool.VERSION_POLICY_KEY] = {"requirement": ">=1.0.0", "source": "explicit"}
+            self.rewrite_program(skill, lambda p: p[0]["content"].update(params=values))
+            for action in ("--print", "--check", "--write"):
+                proc = run_skill_md_tool(skill, action)
+                self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+            self.assertEqual(run_validator(skill)[0], 0)
+            self.assertEqual(run_bridge_validator(skill)[0], 0)
+            self.assertFalse(marker.exists())
+
+    def test_s11_batch_preflight_is_all_or_none_and_io_failure_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            first = self.make_skill(root, "a_first_aisp")
+            second = self.make_skill(root, "b_second_aisp")
+            (first / "SKILL.md").write_text(interface_tool._render_legacy_skill_md(first), encoding="utf-8")
+            (second / "SKILL.md").write_text("unknown body", encoding="utf-8")
+            before = [(skill / "SKILL.md").read_bytes() for skill in (first, second)]
+            self.assertNotEqual(run_skill_md_tool(root, "--write-all").returncode, 0)
+            self.assertEqual(before, [(skill / "SKILL.md").read_bytes() for skill in (first, second)])
+            (second / "SKILL.md").unlink()
+            original_write = interface_tool.write_lf
+            def failing_write(path, text):
+                if path.parent == second:
+                    raise OSError("simulated second write failure")
+                original_write(path, text)
+            output = io.StringIO()
+            with patch.object(interface_tool, "write_lf", side_effect=failing_write), redirect_stderr(output), redirect_stdout(output):
+                code = interface_tool.main([str(root), "--write-all", "--executor-version-requirement", ">=1.0.0"])
+            self.assertEqual(code, 1)
+            self.assertIn("completed:", output.getvalue())
+            self.assertIn("failed/possibly partial:", output.getvalue())
+            self.assertIn("not attempted:", output.getvalue())
+            self.assertEqual(interface_tool.validate_skill_md(first), [])
+            self.assertFalse((second / "SKILL.md").exists())
+
+    def test_s12_core_and_bridge_share_a_nonrecursive_check(self):
+        from tools import aisp_validate, aisp_validate_agent_skill_bridge
+        self.assertIs(aisp_validate._validate_skill_md, interface_tool.validate_skill_md)
+        self.assertIs(aisp_validate_agent_skill_bridge.validate_skill_md, interface_tool.validate_skill_md)
+        for tool in ("tools.aisp_skill_md", "tools.aisp_validate", "tools.aisp_validate_agent_skill_bridge"):
+            proc = run_python("-m", tool, "--help")
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+
+    def test_s13_original_resource_path_and_redline_errors_survive_m7(self):
+        cases = [("path_escape_aisp", "AISP_E_M5_PATH_ESCAPE"), ("dangling_aisp", "AISP_E_M4_PHANTOM")]
+        for folder, code in cases:
+            with self.subTest(folder=folder):
+                result, payload = run_validator(ROOT / "tests/fixtures/invalid" / folder)
+                self.assertNotEqual(result, 0)
+                self.assertIn(code, json.dumps(payload))
+                self.assertIn("AISP_E_M7_SKILL_MD_MISSING", json.dumps(payload))
+
+    def test_s14_missing_and_old_bridge_mode_cannot_opt_out(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            skill = self.make_skill(Path(tmp))
+            path = skill / "SKILL.md"
+            path.write_text(path.read_text(encoding="utf-8").replace('bridge_mode: "agent_skills_bridge"', 'bridge_mode: "native_sidecar"'), encoding="utf-8")
+            self.assertNotEqual(run_validator(skill)[0], 0)
+            self.assertNotEqual(run_bridge_validator(skill)[0], 0)
+            before = path.read_bytes()
+            self.assertNotEqual(run_skill_md_tool(skill, "--write").returncode, 0)
+            self.assertEqual(before, path.read_bytes())
+            path.unlink()
+            self.assertNotEqual(run_validator(skill)[0], 0)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            skill = self.make_skill(Path(tmp))
+            path = skill / "SKILL.md"
+            path.write_text(path.read_text(encoding="utf-8").replace('  protocol: "AISP V1.0.0"', '  protocol: "unknown"'), encoding="utf-8")
+            code, report = run_bridge_validator(skill)
+            self.assertNotEqual(code, 0)
+            self.assertIn("AISP_E_EC7_PROTOCOL", json.dumps(report))
+            self.assertNotEqual(run_validator(skill)[0], 0)
+
+    def test_s15_echo_substitutes_pass_format_without_runtime_certification(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            skill = self.make_skill(Path(tmp))
+            values = {key: "echo available" if key == "executor_version" else "echo done" for key in interface_tool.EXECUTOR_DEFAULTS}
+            values[interface_tool.VERSION_POLICY_KEY] = {"requirement": ">=1.0.0", "source": "explicit"}
+            self.rewrite_program(skill, lambda p: p[0]["content"].update(params=values))
+            ok, message = interface_tool.check_skill_md(skill)
+            self.assertTrue(ok)
+            self.assertIn("executor not certified", message)
+            code, report = run_bridge_validator(skill)
+            self.assertEqual(code, 0)
+            self.assertIn("executor not certified", json.dumps(report))
+            code, report = run_validator(skill)
+            self.assertEqual(code, 0)
+            self.assertIn("AISP_I_M7_SKILL_MD", json.dumps(report))
+
+    def test_html_closing_tags_are_not_links_but_real_escape_paths_still_are(self):
+        from tools.check_markdown_links import extract_links
+        self.assertEqual(extract_links('<a id="anchor"></a>'), [])
+        self.assertEqual(extract_links("</div>"), [])
+        self.assertEqual(extract_links("<../outside.md>"), ["../outside.md"])
+        self.assertEqual(extract_links("</outside/file.md>"), ["/outside/file.md"])
+        self.assertEqual(extract_links("[escape](../outside.md)"), ["../outside.md"])
 
 
 if __name__ == "__main__":

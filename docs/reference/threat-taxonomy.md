@@ -113,4 +113,4 @@ Independent of any threat, every skill inherits Axiom 0: `sys.io.confirm` is **f
 
 ---
 
-Align Axiom 0: Human Sovereignty and Wellbeing | Protocol: AISP | Execution: AISOP | Executor: SoulBot
+Align Axiom 0: Human Sovereignty and Wellbeing | Protocol: AISP | Execution: AISOP | Default Executor: SoulRun (replaceable)

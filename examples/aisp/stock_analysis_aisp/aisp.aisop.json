@@ -131,8 +131,8 @@
           "execute_mode": "agent"
         },
         "report": {
-          "step1": "sys.llm.json('Write a stock analysis report from analysis', schema={ticker:'string', summary:'string', signals:'array', disclaimer:'string'}) -> report",
-          "step2": "sys.assert('report.disclaimer != null', 'Report must state it is informational only and not financial advice')",
+          "step1": "sys.llm.json('Write a stock analysis report from analysis. Set disclaimer exactly to: Informational only; not financial advice.', schema={ticker:'string', summary:'string', signals:'array', disclaimer:'string'}) -> report",
+          "step2": "sys.assert(\"report.disclaimer == 'Informational only; not financial advice.'\", 'The required disclaimer must match the declared wording')",
           "step3": "Render the report as Markdown.",
           "output_mapping": "report",
           "execute_mode": "inline"

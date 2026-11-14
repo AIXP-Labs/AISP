@@ -13,7 +13,7 @@
   "properties": {
     "profile": {
       "type": "string",
-      "description": "Contract schema marker. A runtime detects an AISP skill by the 'aisp.skill.' prefix; only a major change (v1 -> v2) is incompatible.",
+      "description": "Versioned contract schema marker: aisp.skill.v<major> (currently v1). Prefix-based runtime recognition alone does not validate this required form; changing major is incompatible.",
       "pattern": "^aisp\\.skill\\.v[0-9]+$"
     },
     "invocation": {

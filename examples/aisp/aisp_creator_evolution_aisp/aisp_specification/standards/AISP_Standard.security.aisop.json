@@ -29,7 +29,7 @@
             "name": "Path Confinement",
             "check": "Each resources[].path is relative and confined to the skill folder (scope:skill) or _shared/ (scope:shared). No '../' escape, no absolute paths.",
             "severity": "FAIL",
-            "how_to_verify": "For each resource path: reject if it contains '..', is absolute, or resolves outside the skill folder / _shared/. Reinforces core M5.",
+            "how_to_verify": "Before resource reads, confine the resolved _shared root to its containing aisp directory, then confine each resolved resource to its declared skill/shared scope. Reject parent escapes, absolute or invalid filesystem paths, including outward root/file links. Reinforces core M5; static checks do not guarantee safety against concurrent hostile filesystem changes.",
             "threat": "ST4 Path Traversal / Resource Escape"
           },
           "SE2": {
@@ -43,7 +43,7 @@
             "name": "mode Gating",
             "check": "mode gates behavior: execute_only scripts are not injected in full into the model; read_only resources are not executed; read_and_execute is the only mode that permits both. mode is a controlled enum.",
             "severity": "FAIL",
-            "how_to_verify": "Assert each mode in {read_only, execute_only, read_and_execute}. Assert nodes do not read execute_only resources into the model context, and do not execute read_only resources."
+            "how_to_verify": "Assert each mode in {read_only, execute_only, read_and_execute}. Check selected literal sys.io.read/sys.run/sys.run.bg calls, including whitespace, quoted Python paths and lexical aliases without collapsing parent escapes. Use supported option parsing for Python clusters, values, -c/-m/help and file operands; do not infer execution from arbitrary external-tool data arguments. Track same normalized-path/resolved-file mode conflicts across all inventory entries, independent of intervening scopes; consistent aliases remain allowed. Distinct scoped targets may share names: retain all declarations. If every candidate mode forbids the operation, fail SE3 despite target ambiguity; otherwise warn on unresolved literal scope without choosing a target or merging permissions. Static matching is not full shell/CLI validation or proof of runtime enforcement."
           },
           "SE4": {
             "name": "Least-Authority Scripts",
@@ -56,7 +56,7 @@
             "name": "Discovery Script Safety",
             "check": "aisp_list.py is minimal, auditable, zero-dependency, and only writes aisp_list.json with no other side effects. Untrusted directories prefer reading aisp_list.json (no execution) and pass a trust gate before running the script.",
             "severity": "FAIL",
-            "how_to_verify": "Static-analyze aisp_list.py: no imports beyond stdlib; the only write target is aisp_list.json; no network calls, no subprocess, no deletion. Running the script == executing code.",
+            "how_to_verify": "Confine and read aisp_list.py without executing it; unreadable/invalid inputs fail inspection. Review stdlib imports, writes only to aisp_list.json, and absence of network/subprocess/deletion. The reference AST scan covers selected patterns, not arbitrary Python semantics; manual review and a trust gate remain necessary. Running the script == executing code.",
             "threat": "ST1 Skill Discovery Poisoning"
           },
           "SE6": {

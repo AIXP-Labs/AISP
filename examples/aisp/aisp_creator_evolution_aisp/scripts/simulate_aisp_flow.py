@@ -16,7 +16,7 @@ a generic graph walk over aisop.main instead of crashing on creator-only nodes.
          terminals end_node / research_end (which may be function-less).
       3. every non_negotiable.enforced_by resolves to a real mechanism:
          'aisop.main'            -> the named graph exists
-         '<node>.<step>:sys.*'   -> functions[node][step] contains the sys.* token
+         '<node>.<step>:sys.*'   -> numeric step begins with the exact sys.* call
          'tools'                 -> system.content.tools is present and non-empty
       4. (ProtocolAlign advisory) every functions.<node>.on_error value
          resolves to an existing node in the graph that owns that node
@@ -49,13 +49,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
 
 # ---- allowed terminals (graph nodes that may be function-less) --------------
 ALLOWED_TERMINALS = ("end_node", "research_end")
-CACHE_DIR_NAMES = ("__pycache__", ".evolution_snapshot", ".version_history")
+CACHE_DIR_NAMES = ("__pycache__", ".evolution_snapshot", ".version_history", ".execution_cache", ".soulrun_cache")
 CACHE_FILE_SUFFIXES = (".pyc", ".pyo")
 
 # ---- decision-gate label vocabularies (the control-flow contract) -----------
@@ -72,6 +73,8 @@ RETRY_LIMIT = 2  # revision_gate bound: research_attempts < 2
 def load_skill(skill_root: Path):
     """Return (system_content, user_content) from <root>/aisp.aisop.json."""
     skill_file = skill_root / "aisp.aisop.json"
+    if not skill_file.resolve().is_relative_to(skill_root.resolve()):
+        raise ValueError("Skill entry file resolves outside its folder")
     doc = json.loads(skill_file.read_text(encoding="utf-8-sig"))
     if not isinstance(doc, list) or len(doc) != 2:
         raise ValueError(f"{skill_file} must be a two-message AISP JSON array")
@@ -180,7 +183,7 @@ def check_static(system, user, report):
         if not isinstance(fn, dict):
             continue
         oe = fn.get("on_error")
-        if oe is None:
+        if "on_error" not in fn:
             continue
         if not isinstance(oe, dict):
             failures.append(f"STATIC.on_error: functions.{node}.on_error must be an object")
@@ -189,14 +192,14 @@ def check_static(system, user, report):
         if not owners:
             failures.append(f"STATIC.on_error: functions.{node}.on_error on a non-graph node")
             continue
-        owner_name, owner = owners[0]
         for etype, target in oe.items():
             on_error_checked += 1
-            if not isinstance(target, str) or target not in owner:
-                failures.append(
-                    f"STATIC.on_error: functions.{node}.on_error['{etype}'] -> '{target}' "
-                    f"does not resolve to a node in aisop.{owner_name}"
-                )
+            for owner_name, owner in owners:
+                if not isinstance(target, str) or target not in owner:
+                    failures.append(
+                        f"STATIC.on_error: functions.{node}.on_error['{etype}'] -> '{target}' "
+                        f"does not resolve to a node in aisop.{owner_name}"
+                    )
     report["static"]["on_error_targets_checked"] = on_error_checked
 
 
@@ -299,10 +302,8 @@ def check_no_cache_residue(skill_root, report):
 def _resolve_enforced_by(enf, graphs, functions, tools):
     """True if an enforced_by token resolves to a real mechanism."""
     # form 1: a graph name (e.g. 'aisop.main')
-    if enf.startswith("aisop."):
-        return enf.split(".", 1)[1] in graphs
-    if enf in graphs:
-        return True
+    if enf == "aisop.main":
+        return "main" in graphs
     # form 2: 'tools'
     if enf == "tools":
         return isinstance(tools, list) and len(tools) > 0
@@ -310,16 +311,17 @@ def _resolve_enforced_by(enf, graphs, functions, tools):
     if ":" in enf and "." in enf.split(":", 1)[0]:
         locator, mechanism = enf.split(":", 1)
         node, step = locator.split(".", 1)
+        if not re.fullmatch(r"step[1-9]\d*", step):
+            return False
         fn = functions.get(node)
         if not isinstance(fn, dict):
             return False
         step_text = fn.get(step)
         if not isinstance(step_text, str):
             return False
-        # mechanism must be a sys.* token and must literally appear in the step text
-        if not mechanism.startswith("sys."):
+        if not re.fullmatch(r"sys\.[A-Za-z0-9_.]+", mechanism):
             return False
-        return mechanism in step_text
+        return re.match(re.escape(mechanism) + r"\s*\(", step_text.strip()) is not None
     return False
 
 

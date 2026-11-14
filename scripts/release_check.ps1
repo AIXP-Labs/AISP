@@ -8,7 +8,9 @@ $ErrorActionPreference = "Stop"
 
 $rootPath = (Resolve-Path -LiteralPath $Root).Path
 $oldPythonDontWriteBytecode = $env:PYTHONDONTWRITEBYTECODE
+$oldArchiveRequirement = $env:AISP_REQUIRE_ARCHIVE_TEST
 $env:PYTHONDONTWRITEBYTECODE = "1"
+$env:AISP_REQUIRE_ARCHIVE_TEST = "1"
 
 function Invoke-Checked([string]$Label, [scriptblock]$Command) {
   Write-Host "==> $Label"
@@ -42,6 +44,7 @@ function Assert-NoForbiddenResidue {
     ".mypy_cache",
     ".ruff_cache",
     ".execution_cache",
+    ".soulrun_cache",
     ".evolution_snapshot",
     ".version_history",
     "build",
@@ -64,9 +67,10 @@ function Assert-NoPrivatePathLeak {
     @{ Label = "Windows user profile path with forward slashes"; Value = ("C:" + [char]47 + "Users" + [char]47) },
     @{ Label = "local D-drive absolute path"; Value = ("D:" + [char]92) },
     @{ Label = "local D-drive absolute path with forward slash"; Value = ("D:" + [char]47) },
-    @{ Label = "local username"; Value = ("lg" + "uoc") },
     @{ Label = "private key marker"; Value = ("BEGIN " + "PRIVATE KEY") },
     @{ Label = "RSA private key marker"; Value = ("BEGIN " + "RSA " + "PRIVATE KEY") },
+    @{ Label = "EC private key marker"; Value = ("BEGIN " + "EC " + "PRIVATE KEY") },
+    @{ Label = "DSA private key marker"; Value = ("BEGIN " + "DSA " + "PRIVATE KEY") },
     @{ Label = "OpenSSH private key marker"; Value = ("BEGIN " + "OPENSSH " + "PRIVATE KEY") }
   )
   $hits = @()
@@ -77,11 +81,13 @@ function Assert-NoPrivatePathLeak {
       $_.Length -lt 5MB
     } |
     ForEach-Object {
+      $filePath = $_.FullName
       try {
-        $text = Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8
+        $text = Get-Content -LiteralPath $filePath -Raw -Encoding UTF8 -ErrorAction Stop
       } catch {
-        return
+        throw "Privacy scan could not read ${filePath}: $($_.Exception.Message)"
       }
+      if ($null -eq $text) { $text = "" }
       foreach ($pattern in $patterns) {
         if ($text.IndexOf($pattern.Value, [System.StringComparison]::OrdinalIgnoreCase) -ge 0) {
           $hits += "$($_.FullName): contains $($pattern.Label)"
@@ -157,6 +163,11 @@ try {
 }
 finally {
   Pop-Location
+  if ($null -eq $oldArchiveRequirement) {
+    Remove-Item Env:AISP_REQUIRE_ARCHIVE_TEST -ErrorAction SilentlyContinue
+  } else {
+    $env:AISP_REQUIRE_ARCHIVE_TEST = $oldArchiveRequirement
+  }
   if ($null -eq $oldPythonDontWriteBytecode) {
     Remove-Item Env:PYTHONDONTWRITEBYTECODE -ErrorAction SilentlyContinue
   } else {

@@ -4,9 +4,16 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import json
 import re
+import sys
 from pathlib import Path
+
+try:
+    from .aisp_hash import strict_json_loads
+    from .check_markdown_links import prose_lines
+except ImportError:  # pragma: no cover - standalone script
+    from aisp_hash import strict_json_loads
+    from check_markdown_links import prose_lines
 
 
 COMMANDS = [
@@ -15,6 +22,7 @@ COMMANDS = [
     "python -B tools/aisp_validate.py --strict-tools --runtime-trace examples/aisp/stock_analysis_aisp/evals/runtime-traces/hard-pass.json examples/aisp/stock_analysis_aisp",
     "python -B tools/aisp_validate.py --strict-tools --runtime-trace examples/aisp/aisp_creator_evolution_aisp/evals/runtime-traces/hard-pass.json examples/aisp/aisp_creator_evolution_aisp",
     "python -B tools/aisp_check_runtime_trace.py examples/aisp/stock_analysis_aisp examples/aisp/stock_analysis_aisp/evals/runtime-traces/hard-pass.json",
+    "python -B tools/aisp_check_runtime_trace.py examples/aisp/aisp_creator_evolution_aisp examples/aisp/aisp_creator_evolution_aisp/evals/runtime-traces/hard-pass.json",
     "python -B tools/aisp_hash.py --json examples/aisp/yijing_aisp",
     "python -B examples/aisp/aisp_list.py --check",
     "python -B tools/aisp_readme.py examples --check-all",
@@ -25,7 +33,12 @@ COMMANDS = [
     "python -B tools/check_markdown_links.py --root .",
     "git diff --check",
     "git diff --exit-code",
+    "git status --porcelain=v1 --untracked-files=all",
     "python -B -m unittest discover -s tests",
+]
+
+LOCAL_RELEASE_COMMANDS = [
+    "powershell -ExecutionPolicy Bypass -File scripts\\release_check.ps1",
 ]
 
 DERIVED_FILE_COMMANDS = [
@@ -78,9 +91,47 @@ def check_forbidden_patterns(path: Path) -> list[str]:
     return failures
 
 
+def check_protocol_structure(path: Path) -> list[str]:
+    """Guard the current protocol layout, not just the presence of links/commands."""
+    text = "\n".join(line for _, line in prose_lines(path.read_text(encoding="utf-8-sig")))
+    failures = []
+    if len(re.findall(r"^# AISP V1\.0\.0 .+$", text, re.MULTILINE)) != 1:
+        failures.append(f"{path}: expected exactly one protocol title")
+    sections = re.findall(r"^## ([0-9]+)\. ", text, re.MULTILINE)
+    if sections != [str(index) for index in range(26)]:
+        failures.append(f"{path}: numbered sections must appear exactly once in order (0-25)")
+    m3 = re.findall(r"^- \*\*M3\*\* .+$", text, re.MULTILINE)
+    if len(m3) != 1 or r"^aisp\.skill\.v[0-9]+$" not in m3[0]:
+        failures.append(f"{path}: M3 must contain one intact versioned-profile rule")
+    return failures
+
+
 def _readme_field(text: str, name: str) -> str | None:
     match = re.search(rf"^- {re.escape(name)}: `([^`]+)`", text, flags=re.MULTILINE)
     return match.group(1) if match else None
+
+
+def _snapshot_path(root: Path, directory: Path, relative: str) -> Path:
+    """Constrain both the snapshot root and every file before reading bytes."""
+    directory.resolve().relative_to(root.resolve())
+    normalized = relative.replace("\\", "/")
+    if not normalized or normalized.startswith("/") or re.match(r"^[A-Za-z][A-Za-z0-9+.-]*:", normalized) or ".." in normalized.split("/"):
+        raise ValueError("snapshot path must be a confined relative path")
+    path = (directory / normalized).resolve()
+    path.relative_to(directory.resolve())
+    return path
+
+
+def _snapshot_manifest(root: Path, directory: Path, failures: list[str]) -> dict | None:
+    try:
+        path = _snapshot_path(root, directory, "MANIFEST.sha256.json")
+        manifest = strict_json_loads(path.read_text(encoding="utf-8-sig"))
+        if not isinstance(manifest, dict):
+            raise ValueError("snapshot manifest must be an object")
+        return manifest
+    except (OSError, ValueError, RuntimeError) as exc:
+        failures.append(f"{directory}: cannot read snapshot manifest: {exc}")
+        return None
 
 
 def check_snapshot_metadata(root: Path) -> list[str]:
@@ -92,8 +143,17 @@ def check_snapshot_metadata(root: Path) -> list[str]:
         if not readme_path.exists() or not manifest_path.exists():
             failures.append(f"{directory}: missing README.md or MANIFEST.sha256.json")
             continue
-        readme = readme_path.read_text(encoding="utf-8-sig")
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
+        manifest = _snapshot_manifest(root, directory, failures)
+        if manifest is None:
+            continue
+        try:
+            readme = _snapshot_path(root, directory, "README.md").read_text(encoding="utf-8-sig")
+        except (OSError, ValueError, RuntimeError) as exc:
+            failures.append(f"{readme_path}: cannot read snapshot metadata: {exc}")
+            continue
+        for field in ("source_commit", "snapshot_date"):
+            if not isinstance(manifest.get(field), str) or not manifest[field]:
+                failures.append(f"{manifest_path}: missing/non-string {field}")
         readme_commit = _readme_field(readme, "source commit")
         readme_date = _readme_field(readme, "snapshot date")
         if readme_commit != manifest.get("source_commit"):
@@ -114,10 +174,8 @@ def check_snapshot_manifest_integrity(root: Path) -> list[str]:
         manifest_path = directory / "MANIFEST.sha256.json"
         if not manifest_path.exists():
             continue
-        try:
-            manifest = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
-        except (OSError, json.JSONDecodeError) as exc:
-            failures.append(f"{manifest_path}: cannot read manifest: {exc}")
+        manifest = _snapshot_manifest(root, directory, failures)
+        if manifest is None:
             continue
         seen: set[str] = set()
         files = manifest.get("files")
@@ -133,11 +191,19 @@ def check_snapshot_manifest_integrity(root: Path) -> list[str]:
                 failures.append(f"{manifest_path}: duplicate manifest path {rel_path}")
                 continue
             seen.add(rel_path)
-            file_path = directory / rel_path
+            try:
+                file_path = _snapshot_path(root, directory, rel_path)
+            except (OSError, ValueError, RuntimeError):
+                failures.append(f"{manifest_path}: listed file escapes snapshot or has an invalid path: {rel_path}")
+                continue
             if not file_path.is_file():
                 failures.append(f"{manifest_path}: listed file is missing: {rel_path}")
                 continue
-            data = file_path.read_bytes()
+            try:
+                data = file_path.read_bytes()
+            except OSError as exc:
+                failures.append(f"{manifest_path}: cannot read {rel_path}: {exc}")
+                continue
             digest = hashlib.sha256(data).hexdigest()
             if item.get("bytes") != len(data):
                 failures.append(f"{manifest_path}: byte count mismatch for {rel_path}")
@@ -196,6 +262,34 @@ def check_workflow(root: Path) -> list[str]:
     return failures
 
 
+def check_release_script(root: Path) -> list[str]:
+    script = root / "scripts" / "release_check.ps1"
+    if not script.exists():
+        return [f"{script}: missing local release gate script"]
+    text = script.read_text(encoding="utf-8-sig")
+    expected = [
+        "python -B -m unittest discover -s tests",
+        "python -B -m pytest -q -p no:cacheprovider",
+        "python -B tools/aisp_validate.py examples/aisp",
+        "python -B tools/aisp_validate.py --strict-readme examples/aisp",
+        "python -B tools/aisp_validate_agent_skill_bridge.py examples/aisp --strict-readme",
+        "python -B tools/aisp_check_runtime_trace.py examples/aisp/aisp_creator_evolution_aisp examples/aisp/aisp_creator_evolution_aisp/evals/runtime-traces/hard-pass.json",
+        "python -B examples/aisp/aisp_list.py --check",
+        "python -B tools/check_doc_sync.py --root .",
+        "python -B tools/check_markdown_links.py --root .",
+        "git diff --check",
+        "git status --porcelain=v1 --untracked-files=all",
+        "Windows user profile path with forward slashes",
+        "local D-drive absolute path with forward slash",
+        "OrdinalIgnoreCase",
+        "Assert-NoForbiddenResidue",
+        "Assert-NoPrivatePathLeak",
+        "Assert-NoForbiddenAiapFiles",
+        "Assert-CleanWorkingTree",
+    ]
+    return [f"{script}: missing `{needle}`" for needle in expected if needle not in text]
+
+
 def check_retired_external_bridge_layout(root: Path) -> list[str]:
     retired = root / "examples" / "agent_skills_examples"
     if retired.exists():
@@ -203,7 +297,7 @@ def check_retired_external_bridge_layout(root: Path) -> list[str]:
     return []
 
 
-def main(argv: list[str] | None = None) -> int:
+def _main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Check AISP documentation synchronization.")
     parser.add_argument("--root", default=".", help="Repository root.")
     args = parser.parse_args(argv)
@@ -243,10 +337,13 @@ def main(argv: list[str] | None = None) -> int:
         expected = list(COMMANDS)
         if target.name in {"README.md", "README_CN.md"}:
             expected.extend(DERIVED_FILE_COMMANDS)
+        if target.name in {"README.md", "README_CN.md", "release-evidence-matrix.md", "release-evidence-matrix_CN.md"}:
+            expected.extend(LOCAL_RELEASE_COMMANDS)
         missing = check_file_contains(target, expected)
         for command in missing:
             failures.append(f"{target}: missing `{command}`")
     for target in spec_targets:
+        failures.extend(check_protocol_structure(target))
         missing = check_file_contains(target, SPEC_COMMANDS)
         for command in missing:
             failures.append(f"{target}: missing `{command}`")
@@ -257,12 +354,21 @@ def main(argv: list[str] | None = None) -> int:
     failures.extend(check_embedded_spec_links(root))
     failures.extend(check_adr_mirrors(root))
     failures.extend(check_workflow(root))
+    failures.extend(check_release_script(root))
     failures.extend(check_retired_external_bridge_layout(root))
     if failures:
         print("\n".join(failures))
         return 1
     print("doc sync ok")
     return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    try:
+        return _main(argv)
+    except (OSError, ValueError, RuntimeError) as exc:
+        print(f"ERROR: documentation check could not complete: {exc}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

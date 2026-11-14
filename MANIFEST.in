@@ -1,0 +1,31 @@
+# Ignore policy and wheel package-data settings do not filter stale sdist lists.
+global-exclude .env .env.* .pypirc .netrc _netrc id_rsa id_ed25519 *.private.pem *.p12 *.pfx *.log *.bak *.orig *.py[cod]
+global-include .env.example
+prune .git
+prune .secrets
+prune .ssh
+prune .soulrun_cache
+prune .execution_cache
+prune .evolution_snapshot
+prune .version_history
+prune __pycache__
+prune .pytest_cache
+prune .mypy_cache
+prune .ruff_cache
+prune .venv
+prune build
+prune dist
+prune **/.git
+prune **/.secrets
+prune **/.ssh
+prune **/.soulrun_cache
+prune **/.execution_cache
+prune **/.evolution_snapshot
+prune **/.version_history
+prune **/__pycache__
+prune **/.pytest_cache
+prune **/.mypy_cache
+prune **/.ruff_cache
+prune **/.venv
+prune **/build
+prune **/dist

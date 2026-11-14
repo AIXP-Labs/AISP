@@ -28,8 +28,30 @@ env/
 .mypy_cache/
 .ruff_cache/
 .coverage
+.coverage.*
 coverage.xml
 htmlcov/
 build/
 dist/
 *.egg-info/
+
+# Runtime/evolution output may contain user messages or model responses
+.soulrun_cache/
+.execution_cache/
+.evolution_snapshot/
+.version_history/
+*.log
+*.bak
+*.orig
+
+# Local credentials and private key containers
+.pypirc
+.netrc
+_netrc
+.secrets/
+.ssh/
+id_rsa
+id_ed25519
+*.private.pem
+*.p12
+*.pfx

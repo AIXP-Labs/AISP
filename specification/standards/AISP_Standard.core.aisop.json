@@ -9,7 +9,7 @@
       "last_verified_date": "2026-06-19",
       "spec_version_pinned": {
         "aisop": "AISOP V1.0.0 — execution language (.aisop.json, sys.* family); AISP's only base",
-        "agent_skills": "Agent Skills Specification (agentskills.io) - complementary; default-generated but core-optional same-folder SKILL.md sidecar bridge",
+        "agent_skills": "Agent Skills Specification (agentskills.io) - complementary; required generated same-folder SKILL.md compatibility interface (M7)",
         "policy_as_prompt": "Policy-as-Prompt (arXiv 2509.23994) — NL rules are soft; only sys.* is hard",
         "skill_md_supply_chain": "Under the Hood of SKILL.md: Semantic Supply-chain Attacks (arXiv 2605.11418)"
       },
@@ -23,7 +23,7 @@
         "L1": "Output helpfully in User's exact language and script variant",
         "output": "L1"
       },
-      "description": "Core conformance reference for AISP skills. Defines M1-M6 (skill conformance) and R1-R7 (runtime conformance), the aisp_contract schema, the enforced_by grammar, the two-tier model (Tier A execution / Tier S contract), and the discovery contract. Loadable extensions (security, ecosystem) provide additional checks. An AISP skill is first a legal AISOP V1.0.0 program; this standard adds the skill-package conformance layer on top. Not an executable flow.",
+      "description": "Core conformance reference for AISP skills. Defines M1-M7 (skill conformance) and R1-R7 (runtime conformance), the aisp_contract schema, the enforced_by grammar, the two-tier model (Tier A execution / Tier S contract), and the discovery contract. Loadable extensions (security, ecosystem) provide additional checks. An AISP skill is first a legal AISOP V1.0.0 program; this standard adds the skill-package conformance layer on top. Not an executable flow.",
       "fractal_exempt": "Standard library reference module — no executable flow graph.",
       "tools": [],
       "params": {
@@ -50,13 +50,13 @@
         }
       },
       "skill_conformance": {
-        "description": "M1-M6: machine-verifiable skill conformance rules. A conformant AISP skill satisfies all M rules.",
+        "description": "M1-M7: machine-verifiable skill conformance rules. A conformant AISP skill satisfies all M rules.",
         "rules": {
           "M1": {
             "name": "Legal AISOP Program",
             "check": "The skill file is structurally a legal AISOP V1.0.0 program: a 2-message array; required fields protocol/axiom_0/id/name/version/flow_format/loading_mode present; user.content has instruction/aisop/functions; aisop.main exists. The protocol field MUST declare 'AISP V1.0.0'. For AISP skills, loading_mode MUST be exactly 'node'. license SHOULD be present (default 'Apache-2.0'). Each function MUST contain at least one string-valued numeric execution step (step1, step2, ...); metadata keys such as step_note do not count. Function execute_mode declarations are statically checked: missing values fall back inline with a warning, explicit values MUST be inline or agent, and non-agent nodes with more than 10 numeric stepN execution steps SHOULD be reviewed for agent dispatch. The 10-step threshold is a review heuristic, not a restriction on using agent for shorter high-isolation or high-impact nodes.",
             "severity": "FAIL",
-            "how_to_verify": "Parse aisp.aisop.json. Assert data is a 2-element array. Assert data[0].content has protocol == 'AISP V1.0.0', axiom_0, id, name, version, flow_format, and loading_mode == 'node'. Assert data[1].content has instruction, aisop.main, functions. Warn if license missing. For each function, fail if it has no numeric stepN field or any numeric stepN value is not a string; warn when execute_mode is omitted, fail if explicit execute_mode is not inline or agent, and warn when a non-agent function has more than 10 numeric stepN execution steps. Do not warn merely because a shorter node is agent; short nodes may be agent when isolation, source gathering, generation, validation, or decision impact justifies it."
+            "how_to_verify": "Parse aisp.aisop.json. Reject JSON null and every non-array top-level value; a JSON read error is not a successful empty report. Assert data is a 2-element array. Assert data[0].content has protocol == 'AISP V1.0.0', axiom_0, id, name, version, flow_format, and loading_mode == 'node'; flow_format is mermaid, jsonflow or hybrid. When summary/description/license/system_prompt are present they are strings; params is an object when present, tools is an array of non-blank strings when present, and user.content.user_input is a string when present. Omitted tools and empty arrays remain allowed unless a separate red-line binding requires an allow-list. These type checks do not add required fields, restrict parameter-value extensions, certify license identifiers or prove prompt semantics. Assert data[1].content has instruction, aisop.main, functions. Warn only for an omitted license or a blank license string; a non-string license fails its type check instead. If on_error is present, require an object mapping error types to existing function names; static target existence does not prove runtime dispatch or every graph context. For each function, fail if it has no numeric stepN field or any numeric stepN value is not a string; warn when execute_mode is omitted, fail if explicit execute_mode is not inline or agent, and warn when a non-agent function has more than 10 numeric stepN execution steps. Do not warn merely because a shorter node is agent; short nodes may be agent when isolation, source gathering, generation, validation, or decision impact justifies it."
           },
           "M2": {
             "name": "Folder, File Name, and _aisp Suffix",
@@ -66,9 +66,9 @@
           },
           "M3": {
             "name": "aisp_contract Present (Real Object, User Message)",
-            "check": "user.content.aisp_contract is a real JSON object (not a string); its profile starts with 'aisp.skill.'; it contains invocation and non_negotiable.",
+            "check": "user.content.aisp_contract is a real JSON object (not a string); its profile matches the versioned form aisp.skill.v<major>; it contains invocation and non_negotiable.",
             "severity": "FAIL",
-            "how_to_verify": "Assert isinstance(data[1].content.aisp_contract, object). Assert profile startswith 'aisp.skill.'. Assert invocation and non_negotiable are present. FAIL if the contract is a JSON-in-string or lives in system_prompt."
+            "how_to_verify": "Assert isinstance(data[1].content.aisp_contract, object). Assert profile matches ^aisp\\.skill\\.v[0-9]+$ (currently aisp.skill.v1); prefix recognition alone is not conformance. Assert invocation and non_negotiable are present. FAIL if the contract is a JSON-in-string or lives in system_prompt."
           },
           "M4": {
             "name": "enforced_by Points to a Real Mechanism",
@@ -87,11 +87,17 @@
             "check": "The skill MUST NOT self-declare trust (trusted/verified/safe). Trust is judged by the consumer / registry / user / scanner.",
             "severity": "FAIL",
             "how_to_verify": "Scan the contract and metadata for trusted/verified/safe == true (or equivalent self-assertions). FAIL if present."
+          },
+          "M7": {
+            "name": "Required Generated Agent Skills Compatibility Interface",
+            "check": "Every skill MUST contain same-folder SKILL.md. Its name, description and outer license MUST match skill-derived values; its metadata and fixed executor-only bootstrap MUST match the generator. params contains exactly five non-empty launch strings and executor_version_policy, an object with requirement (>=X.Y.Z or ==X.Y.Z) and source (explicit or latest_stable; the latter uses >=). No extra or duplicate keys. Missing, legacy, malformed or drifted interfaces FAIL. EC7 is the legacy mapping, not an opt-out. The internal run_with_executor_aisp bootstrap is not a separately distributed skill.",
+            "severity": "FAIL",
+            "how_to_verify": "Core and bridge validators call the same read-only tools/aisp_skill_md.py validate_skill_md function, which does not call core validation, execute commands, install or use the network. Normalize BOM/newlines, compare the derived header and fixed body, and parse only the five launch strings and version policy as variable. Check success proves unchanged bootstrap and valid format, not executor certification, safety, trust or completed execution. Explicitly migrate only exactly recognized old generated projections; checks never migrate or repair."
           }
         }
       },
       "runtime_conformance": {
-        "description": "R1-R7: runtime conformance rules. Checked against a runtime, not a static skill file.",
+        "description": "R1-R7: runtime conformance rules. Execution MUST use an available conforming AISP/AISOP executor; SoulRun is the default, not a vendor requirement. Hosts MUST NOT bypass the executor to execute or continue the business program; executor-mediated reads and user-requested review are allowed. Before installation, user consent and version interpretation depend on the host. The bootstrap requires a verified matching frozen package-version constraint, direct execution when satisfied, consent for installation/upgrade/downgrade and matching post-install recheck; unknown versions stop. Static policy format and command exit 0 certify neither true compatibility nor completion. No runtime latest lookup is required. The default scope supports one active session, including waiting gates. Runtime behavior is checked against a runtime, not a static skill file.",
         "rules": {
           "R1": {
             "name": "Read Contract; Do Not Skip Required Nodes",
@@ -126,7 +132,8 @@
           "R7": {
             "name": "Honor execute_mode (Dispatch Fidelity)",
             "check": "The runtime MUST honor each node's execute_mode (an inherited AISOP node-level field; AISOP spec §5.2.8). A node declared execute_mode 'agent' MUST be dispatched to an independent sub-agent and MUST NOT be collapsed inline. A node declared execute_mode 'inline' executes in the current context. If execute_mode is omitted, the runtime falls back to inline and static validation warns so dispatch intent can be made explicit. A conformant AISP skill MUST NOT declare any explicit execute_mode value other than inline or agent. execute_mode is a dispatch attribute honored by the runtime, NOT an enforced_by mechanism.",
-            "severity": "FAIL"
+            "severity": "FAIL",
+            "how_to_verify": "Require matching agent dispatch evidence as implemented by the reference checker. For recorded events belonging to known inline nodes (including the omitted-mode default), require mode and dispatched_as to both be inline. This does not add mandatory inline-event coverage, authenticate events or certify all runtime behavior."
           }
         }
       },
@@ -149,9 +156,9 @@
         "truth_model": "The skill folder is the single source of truth; aisp_list.py is the generator; aisp_list.json is the cache.",
         "script_safety": "aisp_list.py MUST be minimal, auditable, zero-dependency, and only write aisp_list.json with no other side effects."
       },
-      "summary": "M1-M6 skill conformance + R1-R7 runtime conformance for AISP skills.",
+      "summary": "M1-M7 skill conformance + R1-R7 runtime conformance for AISP skills.",
       "loading_mode": "node",
-      "system_prompt": "AISP conformance standard and contract reference. Enforce skill-package conformance rigorously: a skill is first a legal AISOP program, then conformant to M1-M6. Hard guarantees come only from enforced_by -> sys.*; trust is never self-declared. Mirror User's exact language and script variant.\nAlign Axiom 0: Human Sovereignty and Wellbeing."
+      "system_prompt": "AISP conformance standard and contract reference. Enforce skill-package conformance rigorously: a skill is first a legal AISOP program, then conformant to M1-M7. Hard guarantees come only from enforced_by -> sys.*; trust is never self-declared. Mirror User's exact language and script variant.\nAlign Axiom 0: Human Sovereignty and Wellbeing."
     }
   }
 ]

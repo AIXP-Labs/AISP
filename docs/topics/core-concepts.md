@@ -28,6 +28,7 @@ aisp/
   aisp_list.json               # index cache
   yijing_aisp/                 # folder name = id "yijing_aisp" (MUST end with _aisp)
     aisp.aisop.json            # the skill body (an AISOP program)
+    SKILL.md                   # MUST: generated executor-only compatibility interface (M7)
     README.md                  # SHOULD: generated bootstrap projection from aisp.aisop.json
     data/
       hexagrams.json
@@ -39,10 +40,10 @@ aisp/
 Rules:
 
 1. One skill = one `aisp/<id>/` folder; the folder name **MUST** equal `id` and end with `_aisp`.
-2. The body file name is fixed at `aisp.aisop.json`.
+2. The business body file name is fixed at `aisp.aisop.json`; the same-folder generated `SKILL.md` is required (M7), with only five launch strings plus the frozen version policy variable. The interface is not business truth or trust evidence.
 3. Per-skill `README.md` is generated from the contract; it improves portability but is not the source of truth.
 4. Resource layout is **custom** (`data/` / `scripts/` / …), declared in the contract — no fixed subfolders are forced.
-4. `_shared/` holds shared resources (`scope: "shared"`); it has no `_aisp` suffix, so the discovery glob `aisp/*_aisp/aisp.aisop.json` skips it automatically.
+5. The optional sibling `aisp/_shared/` holds shared resources (`scope: "shared"`); it is not inside a skill and has no `_aisp` suffix, so discovery skips it automatically.
 
 ---
 
@@ -137,8 +138,8 @@ Per-node logic — natural-language numeric execution steps (`step1`, `step2`, .
 "interpret": {
   "step1": "sys.assert('hexagram != null', 'No hexagram has been cast')",
   "step2": "sys.io.read('data/interpretation_guide.md') -> guide",
-  "step3": "sys.llm.json('Interpret the hexagram for the question using guide', schema={summary:'string', guidance:'string', disclaimer:'string'}) -> reading",
-  "step4": "sys.assert('reading.disclaimer != null', 'Reading must state it is for reflection, not deterministic prediction')",
+  "step3": "sys.llm.json('Interpret the hexagram for the question using guide; set disclaimer exactly to: For reflection only, not deterministic prediction.', schema={summary:'string', guidance:'string', disclaimer:'string'}) -> reading",
+  "step4": "sys.assert(\"reading.disclaimer == 'For reflection only, not deterministic prediction.'\", 'The required disclaimer must match the declared wording')",
   "step5": "Render reading as Markdown.",
   "constraints": ["Ground the interpretation in the cast hexagram and guide; do not fabricate hexagrams."]
 }

@@ -72,9 +72,14 @@ python -B aisp_list.py         # print the list
 python -B aisp_list.py --json  # also (re)generate aisp_list.json
 ```
 
-The script globs `*_aisp/aisp.aisop.json`, reads each skill's `user.content.aisp_contract`, filters by `profile` starting with `aisp.skill.`, prints a human/AI-readable list, and (with `--json`) writes `aisp_list.json`. `_shared/` carries no `_aisp` suffix, so it is skipped automatically.
+The script rejects duplicate JSON keys and non-JSON numeric constants, checks the metadata types used by the index, and scans `*_aisp/` directories, rejects missing/malformed or out-of-root programs, reads each skill's `user.content.aisp_contract`, requires the versioned `aisp.skill.v<major>` profile, prints a human/AI-readable list, and (with `--json`) writes `aisp_list.json`. It rejects a symlinked output index instead of following it, and refuses --json writes to detected hardlinked indexes. The readonly --check mode does not modify hardlinked files. The static directory validator also checks cached routing metadata under EC2; it never runs the discovery script automatically. `_shared/` carries no `_aisp` suffix, so it is skipped automatically.
 
 > **Running the script = executing code.** `aisp_list.py` MUST be minimal, auditable, zero-dependency, and only write `aisp_list.json` with no other side effects (conformance rule SE5). For an untrusted directory, prefer reading `aisp_list.json` and pass a trust gate before running the script (R5).
+
+The directory validator rejects unreadable/non-file discovery scripts and escaping
+script links before inspection, and rejects symlinked index files before reading.
+Its AST scan checks selected patterns without running the script; it cannot prove
+arbitrary Python harmless. Manual review and the trust gate are still required.
 
 ---
 
@@ -88,7 +93,7 @@ L2 instructions: on a hit, load the full aisp/<id>/aisp.aisop.json (contract + a
 L3 resources: nodes load via sys.io.read / sys.run on demand (per the resources inventory + AISP's fixed loading_mode: "node").
 ```
 
-Triggering relies on `aisp_contract.invocation` (`when_to_use` / `when_not_to_use`) and `discovery` (`category` / `tags`) — this replaces the prose `description` mechanism of `SKILL.md`.
+Native routing derives from `aisp_contract.invocation` (`when_to_use` / `when_not_to_use`) and `discovery` (`category` / `tags`). The required generated `SKILL.md` exposes derived discovery text to Agent Skills hosts; it complements this contract metadata rather than replacing or duplicating the business program. Discovery is not permission to execute an untrusted package.
 
 ---
 

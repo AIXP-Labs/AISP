@@ -12,7 +12,7 @@ A skill needs a contract: the metadata a consumer must know *before and during* 
 2. **As a new field on `system.content`** (`system.content.aisp_contract`, a real object). Better — no escaping — but `system.content` is program-identity metadata, and there was no guarantee the model would actually *read* the contract this turn without the runtime rendering it.
 3. **As a real object on `user.content`** (`user.content.aisp_contract`), alongside `instruction` / `user_input` / `aisop` / `functions`, with a strong `instruction` commanding obedience.
 
-The core question: how do we make the model **necessarily read** the contract (not gamble on runtime rendering) while keeping it a clean, machine-friendly object?
+The core question: how do we expose the contract directly in the model's context, without a separate rendering dependency, while keeping it a clean, machine-friendly object?
 
 ## Decision
 
@@ -24,7 +24,7 @@ The core question: how do we make the model **necessarily read** the contract (n
 4. `system_prompt` returns to its AISOP meaning (it MAY be empty; it does not carry the contract). Program identity stays in `system.content` (`summary` / `description` / `version` / `license`).
 5. This is allowed without changing AISOP Core because `aisp_contract` is an AISP-owned field and AISOP tolerates unknown keys on `user.content` (open-world validation, R4). An AISOP runtime ignores it; an AISP-aware runtime reads it.
 
-The one-line principle: *the contract in the user message makes the model necessarily read it (no rendering gamble); `enforced_by → sys.*` makes the red line necessarily enforced (no memory gamble). Both layers are required.*
+The one-line principle: *the user-message contract provides direct context visibility; a conforming runtime must enforce the bound mechanisms. Visibility is not proof of understanding, and a binding is not proof of execution. Both layers are required.*
 
 ## Consequences
 

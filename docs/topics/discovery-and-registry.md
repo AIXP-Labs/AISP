@@ -107,7 +107,7 @@ python -B tools/aisp_readme.py examples/aisp/yijing_aisp --write
 python -B tools/aisp_readme.py examples --check-all
 ```
 
-The hash output follows [`schemas/registry-manifest-v1.schema.json`](../../schemas/registry-manifest-v1.schema.json). Runtime evidence follows [`schemas/runtime-trace-v1.schema.json`](../../schemas/runtime-trace-v1.schema.json). Optional tool permission declarations follow [`schemas/tool-capabilities-v1.schema.json`](../../schemas/tool-capabilities-v1.schema.json).
+The hash output follows [`schemas/registry-manifest-v1.schema.json`](https://github.com/AIXP-Labs/AISP/blob/main/schemas/registry-manifest-v1.schema.json). Runtime evidence follows [`schemas/runtime-trace-v1.schema.json`](https://github.com/AIXP-Labs/AISP/blob/main/schemas/runtime-trace-v1.schema.json). Optional tool permission declarations follow [`schemas/tool-capabilities-v1.schema.json`](https://github.com/AIXP-Labs/AISP/blob/main/schemas/tool-capabilities-v1.schema.json).
 
 ---
 

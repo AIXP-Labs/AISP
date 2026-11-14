@@ -1,5 +1,7 @@
 # Contributing to AISP
 
+[中文版](CONTRIBUTING_CN.md)
+
 Thank you for your interest in contributing to the AI Skill Protocol! This document provides guidelines for contributing to the project.
 
 > ⚠️ **Contribution Status (Current Stage)**
@@ -72,7 +74,66 @@ These keywords MUST be capitalized when used in their normative sense.
 - Use tables for field specifications
 - Use code blocks with language annotations for examples
 - Use Mermaid diagrams for flow and architecture illustrations
-- Cross-reference between documents using relative links
+- Use relative links within the documentation-site tree; link repository-only specifications/schemas through public source URLs so MkDocs does not emit broken outside-tree links
+- Keep existing English/Chinese pairs aligned in requirements, commands, examples and limitations; do not imply that English-only references already have translations
+- Explain one version-gated bootstrap, not several bootstrap types; preserve explicit constraints, consent, post-install checks and executor neutrality
+- Separate static/fixture success, real-host results and publication authorization; never remove red lines or hide runtime warnings to make a check pass
+
+### Documentation Checks
+
+Keep runtime/evolution caches, logs, private keys and local credential files out
+of distributable packages. `.gitignore` is protection against accidental addition,
+not access control, a secret scanner or removal of already tracked/history data.
+The public `.env.example` exception is for reviewed placeholders only. Do not
+blanket-ignore JSON/Markdown, fixtures or evidence directories to hide findings.
+
+Build in an isolated environment satisfying `setuptools>=84.1.0`; the reference
+tools still have no runtime dependencies. Tests use the separate `jsonschema>=4`
+extra; pytest and MkDocs Material remain optional, separately installed tools.
+Inspect wheel/sdist contents, not only the checkout. CI uses verified full action
+SHAs and read-only contents permission, with credential persistence disabled;
+updating those pins requires a fresh upstream check. These settings do not prove
+that hosted CI or a complete vulnerability audit has passed.
+
+Use a clean source staging directory as well as an isolated environment: stale
+`*.egg-info/SOURCES.txt` can reintroduce files into sdist. `MANIFEST.in` filters
+the selected private patterns, while wheel package data stays disabled. The
+archive regression reinjects an old source list before each wheel/sdist build,
+checking each hook's actual input and private residue exclusions independently.
+Selected public data controls remain in sdist, not in the tools-only wheel;
+required Python modules and legal files are compared byte-for-byte with the source
+in both formats, not merely checked for matching filenames.
+Retention does not mean that the tools distributions include the entire repository.
+CI installs the declared build backend and sets
+`AISP_REQUIRE_ARCHIVE_TEST=1`, making missing/old backends fail rather than skip.
+The local release wrapper requires this test too; it does not install the backend
+for you. Without this required profile, an older or missing active backend makes
+this specific local test skip, not pass; use an
+isolated test environment rather than changing global packages automatically.
+
+The reference scripts run from the checkout without installing this repository.
+The `[dev]` extra declares jsonschema only. Optional developer installation is
+`python -m pip install -e ".[dev]"`; explicit `tools` packaging avoids flat-layout
+discovery errors. Source scripts do not require installation.
+Install `jsonschema>=4` separately for schema tests and pytest separately if used.
+To build the site, install its separate dependency in your chosen environment:
+
+```bash
+python -m pip install mkdocs-material
+```
+
+From the repository root, choose a dedicated build-output directory outside the
+checkout that contains no personal files; MkDocs cleans its output directory:
+
+```bash
+python -B tools/check_doc_sync.py --root .
+python -B tools/check_markdown_links.py --root .
+python -B -m mkdocs build --strict --site-dir ../aisp-docs-site
+```
+
+These checks do not run models or authorize publication. A local-link check alone
+does not test MkDocs' `docs/` boundary. The full `release_check.ps1` wrapper invokes
+Git even without `-RequireClean`; do not run it when Git is prohibited.
 
 ### Closing Seal
 

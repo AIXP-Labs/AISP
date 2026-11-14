@@ -1,6 +1,6 @@
 # AISP Examples
 
-A complete, conformance-ready `aisp/` scaffold demonstrating the AI Skill Protocol: three worked skills, the discovery toolkit, a shared resource, and default same-folder Agent Skills `SKILL.md` sidecars for public examples. `SKILL.md` is still core-optional: every skill is a self-contained folder with an `aisp.aisop.json` body and a `user.content.aisp_contract`; executing one requires an AISP/AISOP-compatible runtime.
+Three native AISP example packages, discovery tools, shared resources and required generated same-folder SKILL.md compatibility interfaces (M7). Execution MUST use a conforming executor, SoulRun by default; hosts must not execute or continue the business program themselves. The creator's local generation/release checks have been manually migrated to M7; that engineering work does not certify every real-model workflow or grant publication readiness.
 
 ## Directory Layout
 
@@ -15,14 +15,14 @@ examples/
     ├── yijing_aisp/                      # folder name == id, ends with _aisp
     │   ├── aisp.aisop.json              # the skill body (AISOP V1.0.0 program)
     │   ├── README.md                     # generated bootstrap projection; not a trust proof
-    │   ├── SKILL.md                      # default Agent Skills sidecar; not the truth source
+    │   ├── SKILL.md                      # required Agent Skills compatibility interface; not the truth source
     │   └── data/
     │       ├── hexagrams.json            # read_only data resource
     │       └── interpretation_guide.md   # read_only reference resource
     ├── stock_analysis_aisp/
     │   ├── aisp.aisop.json
     │   ├── README.md                     # generated bootstrap projection; not a trust proof
-    │   ├── SKILL.md                      # default Agent Skills sidecar; not the truth source
+    │   ├── SKILL.md                      # required Agent Skills compatibility interface; not the truth source
     │   ├── data/sample_prices.csv        # read_only data resource
     │   ├── evals/runtime-traces/hard-pass.json
     │   └── scripts/indicators.py         # execute_only script resource (requires_tools: shell)
@@ -30,7 +30,7 @@ examples/
         ├── aisp.aisop.json
         ├── README.md                     # generated bootstrap projection; not a trust proof
         ├── README_CN.md                  # hand-maintained Chinese operator notes
-        ├── SKILL.md                      # default Agent Skills sidecar; not the truth source
+        ├── SKILL.md                      # required Agent Skills compatibility interface; not the truth source
         ├── templates/                    # generated skill templates
         ├── scripts/                      # validation/simulation helpers
         └── evals/                        # replayable behavior evidence
@@ -40,9 +40,9 @@ examples/
 
 | # | Skill | Risk | What it demonstrates |
 |---|-------|:----:|----------------------|
-| 1 | [`aisp/yijing_aisp/`](aisp/yijing_aisp/) | **low** | A single read-only skill; a deterministic `sys.code.exec` cast; three `non_negotiable` red lines bound via `aisop.main` and `interpret.step1/step4:sys.assert`; default same-folder `SKILL.md` sidecar for Agent Skills discovery. |
-| 2 | [`aisp/stock_analysis_aisp/`](aisp/stock_analysis_aisp/) | **medium** | A domain skill spanning `data/` + `scripts/` + `_shared/`; `enforced_by: tools` ("never place trades"); a not-advice disclaimer enforced by `report.step2:sys.assert`; an `execute_only` script with least-authority `requires_tools`; default same-folder `SKILL.md` sidecar; example-local runtime trace evidence for strict tool/R7 checks; the `analyze` node uses `execute_mode: "agent"` (sub-agent dispatch, R7) while simpler nodes explicitly declare `execute_mode: "inline"` |
-| 3 | [`aisp/aisp_creator_evolution_aisp/`](aisp/aisp_creator_evolution_aisp/) | **medium** | A creator/evolution meta-skill for native AISP packages; demonstrates embedded spec snapshots, reference tools, schemas, templates, replayable eval evidence, default same-folder `SKILL.md` sidecar generation, and strict boundaries that avoid AIAP structures. |
+| 1 | [`aisp/yijing_aisp/`](aisp/yijing_aisp/) | **low** | A single read-only skill; a random `sys.code.exec` cast and explicit flow; three `non_negotiable` bindings via `aisop.main` and `interpret.step1/step4:sys.assert`; required same-folder `SKILL.md` compatibility interface for Agent Skills discovery. |
+| 2 | [`aisp/stock_analysis_aisp/`](aisp/stock_analysis_aisp/) | **medium** | A domain skill spanning `data/` + `scripts/` + `_shared/`; `enforced_by: tools` ("never place trades"); a not-advice disclaimer enforced by `report.step2:sys.assert`; an `execute_only` script with least-authority `requires_tools`; required same-folder `SKILL.md` compatibility interface; example-local runtime trace evidence for strict tool/R7 checks; the `analyze` node uses `execute_mode: "agent"` (sub-agent dispatch, R7) while simpler nodes explicitly declare `execute_mode: "inline"` |
+| 3 | [`aisp/aisp_creator_evolution_aisp/`](aisp/aisp_creator_evolution_aisp/) | **medium** | A creator/evolution meta-skill for native AISP packages; demonstrates embedded spec snapshots, reference tools, schemas, templates, replayable eval evidence, required same-folder `SKILL.md` compatibility interface generation, and strict boundaries that avoid AIAP structures. |
 
 ## How to Read an Example
 
@@ -64,11 +64,17 @@ python -B aisp_list.py --json
 
 The script globs `*_aisp/aisp.aisop.json`, reads each `user.content.aisp_contract`, and prints / writes `aisp_list.json`. The skill folders are the single source of truth; `_shared/` is skipped automatically because it has no `_aisp` suffix.
 
+The stock example's stdin-only script accepts UTF-8 CSV (optional BOM; LF, CRLF or
+CR line endings) with exactly one `close` column and finite numeric values on every data row. Empty, malformed
+or invalid series return a JSON error with a nonzero exit code. Its `volatility`
+is the population standard deviation of sampled closing prices, rounded only
+after calculation, not annualized return volatility or investment advice.
+
 ## Conformance at a Glance
 
-All listed skills satisfy the core skill rules (M1–M6): a legal AISOP program (M1), folder name == id ending in `_aisp` (M2), a real-object `aisp_contract` in the user message (M3), every `enforced_by` real (M4), confined relative resource paths (M5), and no self-declared trust (M6). See [`docs/guides/conformance-walkthrough.md`](../docs/guides/conformance-walkthrough.md).
+The listed packages demonstrate M1–M7: legal AISOP program, correct folder/id, real-object contract, existing red-line bindings, confined resources, no self-declared trust, and the required generated interface. Static success does not certify runtime behavior, assertion evaluation or real sub-agent dispatch. All three use the same version-gated bootstrap: matching versions run directly; proven absence/mismatch requires installation consent and a matching recheck. See [`docs/guides/conformance-walkthrough.md`](../docs/guides/conformance-walkthrough.md).
 
-Static validation intentionally keeps `enforced_by: tools` as conditional. Example packages that use `tools` may include replayable runtime evidence under `evals/runtime-traces/` so release checks can prove the specific trace, without pretending static inspection proves runtime enforcement:
+Static validation intentionally keeps `enforced_by: tools` conditional. Example packages include trace fixtures under `evals/runtime-traces/` to exercise the checker's evidence rules. Accepting those fixtures does not authenticate their event claims or prove live runtime enforcement:
 
 ```bash
 python -B tools/aisp_validate.py --strict-tools --runtime-trace examples/aisp/stock_analysis_aisp/evals/runtime-traces/hard-pass.json examples/aisp/stock_analysis_aisp
@@ -80,7 +86,7 @@ For the full publication checklist and the meaning of expected warnings, see [`d
 
 ## Contributing a New Example
 
-Create `aisp/<new_id>_aisp/aisp.aisop.json` (folder name == id, ends with `_aisp`), declare resources in `aisp_contract.resources`, bind each red line to a real mechanism, then run `python -B aisp_list.py --json`. Authoring and public-distribution workflows SHOULD add a generated same-folder `README.md` and `SKILL.md` sidecar by default unless the author explicitly opts out of the sidecar; keep all executable truth in the AISP program.
+Create `aisp/<new_id>_aisp/aisp.aisop.json`, declare resources and real red-line bindings, generate the required same-folder SKILL.md using `tools/aisp_skill_md.py`, then generate README and update discovery with `python -B aisp_list.py --json`. Keep business truth in the AISP program; there is no interface opt-out.
 
 ---
 

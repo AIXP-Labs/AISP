@@ -6,7 +6,7 @@ AISP skills follow a defined lifecycle from creation to distribution. AISP does 
 
 ## Introduction
 
-A skill is a packaged, governed AISOP program. The package layer (AISP) sits on top of the execution layer (AISOP), AISP's only base. AISP defines the *conformance* a skill must satisfy at each lifecycle stage (M1–M6) and what any conforming tool MUST do — not a specific pipeline or toolchain.
+A skill is a packaged, governed AISOP program. The package layer (AISP) sits on top of the execution layer (AISOP), AISP's only base. AISP defines the *conformance* a skill must satisfy at each lifecycle stage (M1–M7) and what any conforming tool MUST do — not a specific pipeline or toolchain.
 
 ---
 
@@ -41,7 +41,7 @@ A generator generates a skill. It MUST produce `aisp/<id>_aisp/aisp.aisop.json` 
 - every `resources[].path` is legal (relative, confined, non-escaping);
 - every resource referenced by a `functions` node is declared in `resources`.
 
-The generator SHOULD produce or update `aisp_list.json` and SHOULD generate the per-skill `README.md` projection from `aisp.aisop.json`. A generated skill MUST still pass conformance rules M1–M6 independently of how it was generated. Generation is tool-agnostic — AISP defines what a conforming generator does, not which tool performs it.
+The generator MUST produce the same-folder generated `SKILL.md` compatibility interface (M7), SHOULD update `aisp_list.json` and SHOULD generate the per-skill README. Finish resources, snapshot synchronization and manifests before regenerating the interface and README; then check read-only. A generated skill MUST pass M1–M7 independently of the toolchain. Runtime execution MUST use a conforming executor (SoulRun by default), not host self-execution.
 
 ---
 
@@ -81,9 +81,9 @@ The Axiom 0 immutability constraint supersedes all versioning rules: no version 
 
 A skill SHOULD document itself proportionally to its risk and reach.
 
-- **Level 1 — Minimum.** A conformant `aisp.aisop.json` (M1–M6) with a complete contract. This is the floor; a skill that does not meet it is not a valid AISP skill.
+- **Level 1 — Minimum.** A conformant business `aisp.aisop.json` and required generated same-folder `SKILL.md` (M1–M7), with a complete contract. Without the interface the package is not conformant, even if a runtime can read the JSON alone.
 - **Level 2 — Recommended.** Level 1 plus an `aisp/README.md` describing discovery, a generated per-skill `README.md`, a populated `aisp_list.json`, and a `description` that makes the skill understandable to a reviewer.
-- **Level 3 — Complete.** Level 2 plus declared provenance for publication, a default same-folder `SKILL.md` sidecar bridge for Agent Skills interop unless explicitly opted out, and a changelog reflecting its Evolution history.
+- **Level 3 — Complete.** Level 2 plus declared provenance for publication and a changelog reflecting its evolution history. Provenance remains external; a generated interface is not trust evidence.
 
 ---
 

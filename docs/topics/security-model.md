@@ -9,7 +9,7 @@ AISP's security model is built around one observation: a skill's resources and i
 
 ## Introduction
 
-A native AISP skill bundles executable and readable resources (scripts, templates, data, sometimes remote URLs) plus a discovery script (`aisp_list.py`). These are exactly where malicious payloads can hide. AISP's defenses are structural: the resource inventory, `mode` gating, path confinement, least authority, no self-declared trust, and the forced-blocking `sys.io.confirm`.
+A native AISP skill bundles its program, required executor interface and declared resources (scripts, templates, data, sometimes remote URLs). The sibling `aisp/` directory may also contain the discovery script (`aisp_list.py`); it is not required inside each skill. These are attack surfaces, including malicious interface commands. AISP's defenses include resource inventory, mode gating, path confinement, least authority, no self-declared trust and blocking confirmation. Static checks do not prove those controls are enforced at runtime.
 
 ---
 
@@ -38,6 +38,8 @@ A `non_negotiable` red line bound to `enforced_by: tools` (for example "never pl
 ---
 
 ## The Attack Surface
+
+Event/provenance fields and a matching executor version can still be self-reported. The reference evidence checks do not authenticate a live runtime merely by accepting those fields; hard enforcement requires genuine controls and trusted evidence provenance.
 
 | Surface | Risk |
 |---------|------|

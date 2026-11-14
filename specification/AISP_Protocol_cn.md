@@ -4,7 +4,7 @@
 
 > **AISP 定义技能包，AISOP 执行技能。**
 >
-> AISP 是可执行技能包协议，不是另一个 `SKILL.md` 格式。
+> AISP 是以 AISOP 为执行基础、借 Agent Skills 标准桥接的可治理技能包。
 
 | 字段 | 值 |
 |------|----|
@@ -24,7 +24,8 @@ AISP 把 AISOP 程序打包成可发现、可触发、可治理、可分发的 A
 - `aisp.aisop.json`：可执行 AISOP 程序，也是固定技能文件名。
 - `user.content.aisp_contract`：机器可核验的技能合同，作为真 object 放在 user 消息中。
 - 声明式资源：在 `aisp_contract.resources` 中列出的 data、scripts 或 shared assets。
-- 默认投影：用于分发和互操作的 generated per-skill `README.md` 与同目录薄 `SKILL.md` sidecar bridge。Core AISP 一致性不要求 `SKILL.md`，但 authoring tools SHOULD 默认生成，除非作者明确 opt out。
+- `SKILL.md`：必需的生成式同目录 Agent Skills 兼容接口（M7）；固定引导程序将执行交给执行器，不让宿主自行解释执行业务。
+- `README.md`：推荐的生成式技能包介绍（EC8），strict/release profile 将其作为必需文件。
 
 硬保证只来自真实机制，例如 `enforced_by -> sys.*`。自然语言指导是软约束，信任绝不自报。
 
@@ -77,7 +78,7 @@ AISP 把 AISOP 程序打包成可发现、可触发、可治理、可分发的 A
 
 **第六部分：互操作与生命周期**
 
-- [20. 互操作：默认 SKILL.md Sidecar Bridge](#20-互操作)
+- [20. 互操作：必需的 Agent Skills 兼容接口](#20-互操作)
 - [21. 生命周期：生成 / 进化 / 分发](#21-生命周期)
 
 **第七部分：示例与诚实**
@@ -135,6 +136,7 @@ Axiom 0: Human Sovereignty and Wellbeing
 - 两层（Tier A 执行 / Tier S 合同）
 - aisp_contract schema 及其在 user 消息中的位置
 - enforced_by 红线绑定（policy-as-code）
+- 必需的生成式 SKILL.md 兼容接口，以及只能通过执行器运行的要求
 - 发现、渐进披露、安全、命名、版本与生命周期
 
 每个 AISP 技能 MUST 首先是合法 AISOP V1.0.0 程序。
@@ -161,12 +163,13 @@ Axiom 0: Human Sovereignty and Wellbeing
 
 > AISOP 是技能书写的语言。**AISP 是包。**
 
-**原生 AISP 技能** 是一个**自包含文件夹**，内含一个固定文件名的 AISOP 程序 `aisp.aisop.json`，以及该技能自定义布局的资源。它用 AISOP 自己的结构表达一个**可复用、可执行、可治理、可进化**的能力 — **不要求、不依赖 Agent Skills 的 `SKILL.md`**。`SKILL.md` MAY 仅作为同目录 sidecar 投影存在；authoring / distribution tools SHOULD 默认包含该 sidecar，除非作者明确 opt out。
+**AISP 是以 AISOP 程序为核心、可执行可治理的结构化技能包；它承认 Agent Skills 的标准地位，依赖它作为桥接口接入各个 agent 平台。** 一个原生技能是自包含文件夹，包含固定文件名的 `aisp.aisop.json`、必需的生成式同目录 `SKILL.md` 兼容接口和已声明的自定义资源。可复用、可执行、可治理、可进化的业务能力只在 `aisp.aisop.json` 定义；接口将执行交给符合 AISP/AISOP 要求的执行器，不构成第二份业务定义。
 
 ```text
 原生 AISP 技能 =
     一个文件夹（folder = skill，文件夹名 = id，必带 _aisp 后缀）
   + aisp.aisop.json（AISOP 程序：合同 + 执行图 + 节点 + sys.*）
+  + SKILL.md（必需的生成式 Agent Skills 兼容接口，M7）
   + 自定义资源（data/ scripts/ … 由 aisp_contract.resources 声明）
 ```
 
@@ -178,7 +181,7 @@ Axiom 0: Human Sovereignty and Wellbeing
 
 ### 2.1 技能即程序
 
-Agent Skills（`SKILL.md`）用 Markdown 散文加渐进披露描述技能。AISP 吸收其"神"（可复用能力、触发、渐进披露、资源），丢弃其"形"（`SKILL.md` body）。真正可执行的主体是 `aisp.aisop.json`，由 AISP/AISOP runtime 直接发现与执行。要在现有 Agent Skills 平台上跑时，authoring tools SHOULD 默认加一个同目录薄 `SKILL.md` sidecar bridge（§20），作者 MAY 为 native-only package 省略它。
+Agent Skills（`SKILL.md`）提供标准发现和兼容接口；AISP 的可执行业务主体仍是 `aisp.aisop.json`。所有合规包 MUST 包含生成的同目录 `SKILL.md`（§20），即使包直接由 runtime 消费也不例外。引导程序有固定接口逻辑，不复制技能业务函数。技能 MUST 由合规执行器运行；宿主 MUST NOT 绕开执行器自行执行或续跑业务程序。
 
 ```text
 命名约定：
@@ -197,10 +200,10 @@ Agent Skills（`SKILL.md`）用 Markdown 散文加渐进披露描述技能。AIS
 | | Agent Skills（`SKILL.md`）| **AISP（本协议）** |
 |---|---|---|
 | 本质 | 散文指令 + 渐进披露 | **可执行流程 + 可治理**（AISOP 图 + `enforced_by → sys.*` 硬约束 + 红线绑定）|
-| 标准性 | 跨厂商开放标准 | AISP 自有；**可包含 `SKILL.md` sidecar** 接其平台 |
-| 关系 | — | **互补**：AISP 提供 Agent Skills 缺的"可执行+可治理"，并通过默认生成但 core 可选的 sidecar 兼容 |
+| 标准性 | 跨厂商开放标准 | AISP 技能包规则，加上**必需的生成式 `SKILL.md` 兼容接口** |
+| 关系 | — | **互补**：AISOP 承载可执行业务程序，Agent Skills 接口桥接宿主并将执行交给执行器 |
 
-对外口径：**"AISP 不取代 Agent Skills；它与其互补，提供可执行、可校验、可治理的技能，并可包含薄 `SKILL.md` sidecar 与 Agent Skills 平台互操作。"**
+对外短版：**"AISP 是以 AISOP 为执行基础、借 Agent Skills 标准桥接的可治理技能包。"**
 
 ### 3.2 生态分层
 
@@ -230,12 +233,21 @@ AISP（技能包）        把 AISOP 程序打包成可发现/触发/治理/分�
 
 - **M1** MUST **结构上是合法 AISOP V1.0.0 程序**（2-消息数组、必填字段、`user.content` 的 `instruction`/`aisop`/`functions`、`aisop.main` 存在）；其 `protocol` 字段 MUST 声明 **`AISP V1.0.0`**。AISOP 参考校验器只查 `protocol` *存在*、不查其值，故接受 `AISP V1.0.0`；AISOP 引擎照常执行（不以 `protocol` 值设门）。必填字段：`protocol`/`axiom_0`/`id`/`name`/`version`/`flow_format`/`loading_mode`（`license` SHOULD 有，默认 `Apache-2.0`）。对 AISP 技能，`loading_mode` MUST 精确等于 `"node"`。
 - **M2** MUST 位于 `aisp/<id>/`，文件名为 `aisp.aisop.json`，`<id>` == 文件夹名且**以 `_aisp` 结尾**（§18）。
-- **M3** MUST 含 `user.content.aisp_contract`（真 object），其 `profile` 以 `aisp.skill.` 开头，且含 `invocation` 与 `non_negotiable`（§8）。
+- **M3** MUST 含 `user.content.aisp_contract`（真 object），其 `profile` 匹配 `^aisp\.skill\.v[0-9]+$`（当前为 `aisp.skill.v1`），且含 `invocation` 与 `non_negotiable`（§8）。
 - **M4** 每条 `non_negotiable.enforced_by` MUST 指向技能内**真实存在**的机制（§10）。
 - **M5** `resources`（若有）的每条 `path` MUST 为相对路径、限本技能夹或 `_shared/`、禁 `../` 逃逸（§17）。
 - **M6** 技能 MUST NOT 自报信任（`trusted`/`verified`/`safe`）— 信任由消费方判（§17）。
+- **M7** 技能 MUST 含生成的同目录 `SKILL.md`：（1）文件存在；（2）`name`、`description`、外层 `license` 与技能派生值一致；（3）metadata 与固定引导正文和生成器一致，仅允许 `params` 中五个命令字符串及合法冻结版本策略不同（§20）。缺失、旧版、损坏或漂移均 FAIL。EC7 是旧互操作编号的兼容映射，不是缺文件豁免。
 
 ### 4.2 Runtime 一致性
+
+AISP 技能 MUST 通过可用且符合 AISP/AISOP 运行要求的执行器运行。参考引导程序默认使用 **SoulRun**（`soulrun.dev`），也允许其他合规执行器，包括宿主内嵌 runtime。宿主 MUST NOT 绕过执行器自行执行或续跑 `aisp.aisop.json`。通过执行器正规接口读取程序、合同、节点、资源（例如 `soulrun --program`），以及用户要求的代码审查，不在禁止之列。
+
+运行要求主体是下列 R1～R7；命令及冻结版本策略是参考启动配置，不是执行器认证，也不是所有内嵌 runtime 都必须暴露的唯一接口。执行器必须守住阻塞式人类确认门、红线和 `execute_mode: "agent"` 的独立子代理派发。执行器未安装时，安装确认依赖宿主自己的确认/权限控制，不能声称由尚不存在的执行器硬性守门。
+
+区分未安装、已安装但不可用、版本不兼容或未核实、运行失败。运行失败不等于允许自动重装或升级。固定引导程序要求报告的执行器自身包版本满足冻结约束，而不只检查命令可调用性（§20.1）；未知输出须停止，不得通过。静态校验只检查策略形状，不证明版本自报真实或 runtime 实际兼容。命令退出 0 可能只是本轮准备就绪或停在门上，不代表完成；停门不等于用户同意。完成须以运行记录的结束状态及对应产物为据，并限定在已验证范围内。
+
+默认引导程序不加 `--session-id`。同一项目/运行目录的同一默认作用域只支持一个活动会话，等待用户答复也算活动；多个窗口轮流发消息不构成隔离。并发对话须由宿主提供稳定隔离，或使用不同项目/运行目录。完整执行器兼容性测试不属于本次改版。
 
 - **R1（MUST）** AISP runtime MUST 读取 `user.content.aisp_contract` 作为技能合同；MUST 不跳过 `aisop.main` 的必经节点；MUST 不绕过 `sys.io.confirm`（继承 Axiom 0）。
 - **R2（MUST）** 对 `non_negotiable`，runtime MUST 通过其 `enforced_by` 指向的机制执行硬约束。
@@ -244,6 +256,8 @@ AISP（技能包）        把 AISOP 程序打包成可发现/触发/治理/分�
 - **R5（SHOULD）** runtime 处理不可信技能/资源前 SHOULD 经用户信任门；SHOULD 优先读 `aisp_list.json`（不执行脚本，§16）。
 - **R6（SHOULD）** Runtime SHOULD 声明其工具强制是 hard（真权限强制）还是 advisory（提示性）。若为 advisory，`enforced_by: tools` **不得**被当作硬保证。
 - **R7（MUST）** Runtime MUST 遵守每个节点的 `execute_mode`——这是继承自 AISOP 的节点级字段（AISOP §5.2.8）。声明 `execute_mode: "agent"` 的节点 **MUST 派发到独立 sub-agent、不得 collapse 成 inline**；声明 `"inline"` 的节点在当前上下文执行。若省略 `execute_mode`，runtime 回退为 `inline`，静态 validator 发出 warning 以促使派发意图显式化。合规 AISP 技能 MUST NOT 显式声明 `"inline"` / `"agent"` 之外的值。这是执行保真度保证。`execute_mode` 是 runtime 遵守的派发属性，**不是** `enforced_by` 机制（§15）。
+
+参考 trace 覆盖范围：agent 节点需要匹配的派发证据。已知 inline 节点（包括省略模式时的默认值）若已有事件，则 `mode` 与 `dispatched_as` 都须为 inline；这项一致性检查不要求每个 inline 节点都有事件。通过 trace 检查不认证事件真实性，也不认证完整运行期合规。
 
 ### 4.3 开放世界 AISOP 兼容性
 
@@ -259,7 +273,8 @@ AISP（技能包）        把 AISOP 程序打包成可发现/触发/治理/分�
 | 技能文件 | `aisp.aisop.json`（AISOP 程序）|
 | 合同（aisp_contract）| `user.content.aisp_contract`（真 object）|
 | Tier A / Tier S | 执行层（aisop.main/functions/sys.*）/ 合同层（aisp_contract）|
-| Sidecar bridge | 默认生成但 core 可选的同目录 `SKILL.md`，仅为 Agent Skills 平台互操作 |
+| Agent Skills 兼容接口（桥接口）| 必需的生成式同目录 `SKILL.md`，包含固定引导程序，不是业务真相源 |
+| Executor（执行器）| 按 AISP/AISOP 运行要求执行技能的程序；不绑定厂商，默认 SoulRun |
 
 ---
 
@@ -276,12 +291,14 @@ aisp/                          # 可见目录（非隐藏），AI/人/bash 可�
   aisp_list.json               # 索引缓存（读它也能拿全部技能信息）
   yijing_aisp/                 # 文件夹名 = id "yijing_aisp"（必带 _aisp）
     aisp.aisop.json            # 固定文件名（技能 = 一个 AISOP 程序）
+    SKILL.md                   # MUST：生成式 Agent Skills 兼容接口
     README.md                  # SHOULD：由 aisp.aisop.json 生成的自举投影
     data/
       hexagrams.json
       interpretation_guide.md
   stock_analysis_aisp/
     aisp.aisop.json
+    SKILL.md
     README.md
     data/ scripts/ ...
   _shared/                     # 跨技能共享资源（非技能文件夹，不带 _aisp）
@@ -295,7 +312,7 @@ aisp/                          # 可见目录（非隐藏），AI/人/bash 可�
 4. **资源布局自定义**（`data/`/`scripts/`/…），由 `aisp_contract.resources` 声明；不强制固定子夹。
 5. 单技能 `README.md` SHOULD 由 `aisp.aisop.json` 生成；strict/release profile 可将缺失、手写、漂移、source marker 错误或 generator marker 不受支持升为失败（EC8）。它是自举投影，不是真相源。
 6. `_shared/` 放共享资源（`scope:"shared"`）。
-7. Core 不要求 `SKILL.md`；authoring tools SHOULD 为新建或分发技能默认生成同目录 sidecar bridge，除非作者明确 opt out（§20）。
+7. 每个合规包 MUST 含生成的同目录 `SKILL.md` 兼容接口（M7、§20），不存在作者 opt-out 豁免。
 8. 发现：读 `aisp/aisp_list.json` 或 bash 跑 `aisp/aisp_list.py`，兜底 glob `aisp/*_aisp/aisp.aisop.json`（§16）。
 
 ---
@@ -310,7 +327,7 @@ aisp/                          # 可见目录（非隐藏），AI/人/bash 可�
 
 **真相模型**：**技能文件夹 = 唯一真相；`aisp_list.py` = 派生器；`aisp_list.json` = 缓存。** 三者不竞争 — 以文件夹为准；JSON 疑旧就跑脚本重生成。
 
-单技能 `README.md` 是为独立技能包自举而生成的投影。README 检查通过只证明它与 `aisp.aisop.json` 一致，不证明可信、安全或 registry 认可。通用非 AISOP agent 只能把它当 best-effort 指引；硬保证仍需要符合规范的 AISOP runtime。
+单技能 `README.md` 是生成的技能包介绍。README 检查通过只证明它与 `aisp.aisop.json` 一致，不证明可信、安全或 registry 认可。通用宿主 MUST 经兼容接口将执行交给合规执行器；没有执行器就停止。README 散文不授权 best-effort 自行执行，也不能替代外部 provenance/用户信任门。
 
 ---
 
@@ -324,6 +341,8 @@ aisp/                          # 可见目录（非隐藏），AI/人/bash 可�
 | **Tier S（合同，瘦）** | 触发、红线绑定、发现、风险、资源清单 | `user.content.aisp_contract`（真 object）|
 
 合同只装"流程层做不到 / 消费方需预先知道"的；其余归位 Tier A（§15）。
+
+继承的可选字段在出现时仍须保持类型：`system.content.summary`、`description`、`license`、`system_prompt` 及 `user.content.user_input` 为字符串，`system.content.params` 为对象，`system.content.tools` 为非空白字符串数组。除非另有红线绑定要求受限白名单，否则允许省略 tools 或使用空数组。这不把这些字段改成必填项（`license` 仍为 SHOULD），不限制参数值扩展，不认证许可证标识，也不证明提示与合同语义一致。只有许可证缺失或字符串仅含空白才产生建议性存在性 warning；非字符串许可证仍按类型错误 FAIL，不混报为缺失许可证。
 
 ---
 
@@ -348,7 +367,7 @@ aisp/                          # 可见目录（非隐藏），AI/人/bash 可�
 
 | 字段 | 必填 | 说明 |
 |------|------|------|
-| `profile` | MUST | `aisp.skill.v1`（runtime 据 `aisp.skill.` 前缀识别）|
+| `profile` | MUST | `aisp.skill.v1`（须为带版本的 `aisp.skill.v<major>`；前缀识别不等于校验）|
 | `invocation` | MUST | 触发（§9）|
 | `non_negotiable` | MUST | 红线 + `enforced_by`（§10）|
 | `discovery` | SHOULD | category/tags（§11）|
@@ -389,7 +408,7 @@ aisp/                          # 可见目录（非隐藏），AI/人/bash 可�
 
 ## 10. `non_negotiable` + `enforced_by`（红线绑定）
 
-红线 = 声明（NL `rule`）+ **绑定到真实强制机制**（`enforced_by`）。这是 AISP 区别于散文 skill 的核心：**声明 ↔ 强制可机器核验。**
+红线 = 声明（NL `rule`）+ **绑定到真实强制机制**（`enforced_by`）。M4 机器检查的是绑定引用，不是红线完整语义或实际执行；R2 要求的真实强制仍由合规运行时负责。
 
 `enforced_by` 文法（MUST 指向真实存在的机制）：
 
@@ -462,7 +481,7 @@ aisp/                          # 可见目录（非隐藏），AI/人/bash 可�
 |------|-----------|--------|
 | `user.content.instruction` | **强硬总指令**：`"STRICTLY OBEY aisp_contract; its non_negotiable rules are inviolable; then RUN aisop.main"` | 模型读 user 消息即见 |
 | `user.content.aisp_contract` | **技能简报**：触发/红线/治理/资源（模型直接读，当作关键内容）| 在 user 消息里，模型直读 |
-| `functions.<node>.step` | **任务指令**（每步做什么；角色/原则/知识已归位于此）| AISOP 引擎逐节点喂 |
+| `functions.<node>.stepN` | **任务指令**（数字执行步骤；角色/原则/知识已归位于此）| AISOP 引擎逐节点喂 |
 | `enforced_by → sys.*` | **硬保证**（确认/校验/工具门）| runtime 强制（R2, MUST），与模型是否"记得"无关 |
 | `system_prompt`（system.content）| 可空；或放真正的模型系统提示；或 `{system_prompt}` 注入 | 作者/runtime |
 
@@ -471,9 +490,9 @@ aisp/                          # 可见目录（非隐藏），AI/人/bash 可�
 - `instruction` 以**强硬指令**点名遵从合同（OBEY / inviolable）。
 - `system_prompt` 不承载合同（**MAY 为空**）。
 - 模型的任务指令**在 functions**。
-- **软读 + 硬卡 双层**：模型读到红线（policy-as-prompt，软）+ `enforced_by → sys.*` 真正卡住（policy-as-code，硬）。**硬保证只来自 `sys.*`** — 模型是否"记得"红线不影响硬约束。
+- **软读 + 硬卡 双层**：user 消息中的合同暴露红线，合规运行时 MUST 按 R2 强制所绑定的机制。硬度来自 `sys.*`、必经图拓扑或真正受限工具的实际执行，不来自模型记性或声明本身。机制前缀匹配不证明断言受支持、已求值或语义充分。
 
-> 即：合同在 user 消息让模型**必然读到**（不赌渲染）；`sys.*` 让红线**必然被卡**（不赌模型记性）。两层都要。
+> 上下文可见不证明模型理解或遵从。运行期强制是必须履行的要求，不是静态绑定已经证明的事实；不支持或未验证的结果不得说成已验证硬检查。两层都要。
 
 ---
 
@@ -490,7 +509,12 @@ aisp/                          # 可见目录（非隐藏），AI/人/bash 可�
 | 程序身份 | AISOP `summary`/`description` |
 | **触发/红线绑定/发现/风险/资源清单** | **`user.content.aisp_contract`** |
 
-> **`execute_mode`（派发保真度）。** 每个节点 MAY 声明 `execute_mode`：`"inline"`（默认模式；在当前上下文执行，适合短路由、分类、确认和简单整理）或 `"agent"`（独立 sub-agent 执行，可用于需要隔离、独立上下文、多文件处理、web/来源收集、复杂校验、生成或高影响决策的节点）。step 数不是选择 `agent` 的唯一标准；短节点在隔离或影响级别需要时也可以使用 `agent`。若省略，runtime 回退为 `"inline"`，合规 AISP validator 发出 `AISP_W_M1_EXECUTE_MODE_DEFAULT_INLINE`。显式值不是 `"inline"` / `"agent"` 时静态一致性 FAIL。Runtime MUST 遵守 `agent`（**R7**）：`agent` 节点 MUST 派发到 sub-agent、不得 collapse 成 inline。超过 10 个数字 `stepN` 执行步骤且仍为非 agent 的节点 SHOULD 评估是否改为 `execute_mode: "agent"`；reference validator 会对此发 warning。`step_note` 等元数据字段不计入该启发式，也不能满足 `enforced_by`。该阈值是审查启发式，不是短节点使用 `agent` 的限制条件。`execute_mode` 是继承自 AISOP 的字段（AISOP §5.2.8）、runtime 派发属性——**不是** `enforced_by` 机制，也**不进合同**（属 Tier A、per-node）。
+`on_error` 是继承自 AISOP 的函数节点元数据，不是图级 `error` 边，也不进入
+`aisp_contract`。AISOP 按精确类型、分类匹配、`default`、图级错误兜底依次路由
+（§5.2.4）。参考静态检查只核对映射形状及目标函数存在，不证明真实错误派发或每个图
+上下文中的可达性；后者仍属于执行期检查。
+
+> **`execute_mode`（派发保真度）。** 每个节点 MAY 声明 `execute_mode`：`"inline"`（默认模式；在当前上下文执行，适合短路由、分类、确认和简单整理）或 `"agent"`（独立 sub-agent 执行，可用于需要隔离、独立上下文、多文件处理、web/来源收集、复杂校验、生成或高影响决策的节点）。step 数不是选择 `agent` 的唯一标准；短节点在隔离或影响级别需要时也可以使用 `agent`。若省略，runtime 回退为 `"inline"`，合规 AISP validator 发出 `AISP_W_M1_EXECUTE_MODE_DEFAULT_INLINE`。显式值不是 `"inline"` / `"agent"`（包括 null、数组或对象）时静态一致性 FAIL；这些不算省略声明。Runtime MUST 遵守 `agent`（**R7**）：`agent` 节点 MUST 派发到 sub-agent、不得 collapse 成 inline。超过 10 个数字 `stepN` 执行步骤且仍为非 agent 的节点 SHOULD 评估是否改为 `execute_mode: "agent"`；reference validator 会对此发 warning。`step_note` 等元数据字段不计入该启发式，也不能满足 `enforced_by`。该阈值是审查启发式，不是短节点使用 `agent` 的限制条件。`execute_mode` 是继承自 AISOP 的字段（AISOP §5.2.8）、runtime 派发属性——**不是** `enforced_by` 机制，也**不进合同**（属 Tier A、per-node）。
 
 ---
 
@@ -523,9 +547,9 @@ L3 资源：functions 节点按需 sys.io.read/sys.run（依 resources 清单 + 
 ## 17. 安全与信任模型
 
 资源是攻击面（scripts/templates/examples/远程 URL 可藏恶意 payload）。规则：
-1. `path` 相对、**限本技能夹或 `_shared/`、禁 `../` 逃逸**（M5）。
+1. `path` 相对、**限本技能夹或 `_shared/`、禁 `../` 逃逸**（M5）。读取资源前，先解析并确认 `_shared/` 本身仍在所属 `aisp/` 目录内；指向目录外的根链接不能扩展包边界。
 2. 远程 URL 默认禁、需用户确认。
-3. `mode` 门控：`execute_only` 脚本不全文注入模型；`read_only` 不执行。
+3. `mode` 门控：`execute_only` 脚本不全文注入模型；`read_only` 不执行。参考静态匹配覆盖选定的字面量 `sys.io.read`、`sys.run` 和 `sys.run.bg` 调用，包括调用空白、常见的带引号 Python 路径及点/分隔符别名；它区分支持的 Python 组合选项与文件操作数，不假定任意 `.py` 参数都被执行。不同 scope 的资源可使用相同相对名称。若所有匹配声明都禁止当前操作，即使目标 scope 不明，SE3 仍失败；其余目标不明的字面量用法发 warning，不证明所选 scope，也不合并权限。这不是完整 shell/命令解析器，也不证明运行期门控。
 4. 脚本用 `requires_tools` 最小授权；高危命令触发 `sys.io.confirm`。
 5. **信任不自报**（M6）——`verified`/`trusted`/`safe` 由 runtime/registry/用户/扫描器判。
 6. registry 记 provenance（source/commit/`contract_sha256`/`resources_sha256`）。
@@ -533,6 +557,8 @@ L3 资源：functions 节点按需 sys.io.read/sys.run（依 resources 清单 + 
 8. `aisp_list.py` 是脚本，**跑它=执行代码**：MUST 最小、可审计、零依赖、只写 `aisp_list.json` 无其它副作用；不可信目录 SHOULD 优先读 `aisp_list.json`（不执行）、先过信任门再跑脚本。
 9. **Axiom 0**：所有技能继承"Human Sovereignty and Wellbeing"；`sys.io.confirm` 🔒 不可绕。
 10. **执行期只读**：AISP runtime SHOULD 在正常执行期把技能包（文件与资源）视为只读。修改只通过一个有意的进化/编辑步骤发生。
+
+参考发现脚本检查器执行的是有界 AST 扫描，不证明任意 Python 行为，也不提供沙箱。通过检查不授权执行不可信脚本；仍需人工审查和宿主信任门。编码无效、非文件输入和越界发现脚本链接会使检查失败，而非崩溃或读取目录外内容。
 
 ---
 
@@ -543,7 +569,7 @@ L3 资源：functions 节点按需 sys.io.read/sys.run（依 resources 清单 + 
 | `aisp_contract` 字段名 | 固定；不用 `aisp_skill_contract`（"skill"冗余，AISP 已含）/ 不裸用 `skill_contract`（缺命名空间）|
 | 技能 `id`（= 文件夹名）| **必以 `_aisp` 结尾**；小写字母数字+下划线；如 `yijing_aisp`、`stock_analysis_aisp` |
 | `profile` | `aisp.skill.v1`（检测按 `aisp.skill.` 前缀）|
-| SKILL.md sidecar `name`（若有）| `id` 去 `_aisp`/转连字符、小写；**禁含 "anthropic"/"claude"**、≤64（§20）|
+| 必需 SKILL.md 接口的 `name` | `id` 去 `_aisp`/转连字符、小写；**禁含 "anthropic"/"claude"**、≤64（§20）|
 | 声明式规则字段 | 用 `non_negotiable`，**不用 `assert`**（`assert` 已是 `sys.assert` 确定性硬检查，语义相反）；硬度靠 `enforced_by → sys.*` |
 
 ---
@@ -570,36 +596,11 @@ system.content.version                = "1.0.0"             ← 该技能自身�
 
 ## 20. 互操作
 
-**原生 AISP 技能的 core conformance 不要求 `SKILL.md`。** 要在 Agent Skills 平台（Claude Code/Codex/Gemini/Copilot/Cursor）被发现，authoring tools SHOULD 默认在原生 `*_aisp/` 技能目录内生成一个薄的同目录 `SKILL.md` sidecar bridge，除非作者明确 opt out。Sidecar 只引导加载和运行本目录 `aisp.aisop.json`；不复制逻辑；删掉它后，原生 AISP 技能在 AISP/AISOP runtime 下仍可运行。
+**每个合规 AISP 技能 MUST 含生成的同目录 `SKILL.md` Agent Skills 兼容接口（M7）**，直接由 runtime 消费的包也不能省略。业务唯一真相源仍是 `aisp.aisop.json`；接口只包含固定执行器引导程序，不复制业务节点、资源或红线。
 
-```markdown
----
-name: yijing
-description: Cast and interpret an I Ching (Yijing) hexagram for a question. Use when asked for a yijing/I Ching reading or hexagram interpretation. Do not use for medical, legal, or financial decisions needing a professional.
-license: Apache-2.0
-metadata:
-  generated_from_aisp: "true"
-  aisp_program: aisp.aisop.json
-  protocol: AISP V1.0.0
-  bridge_mode: native_sidecar
----
+`tools/aisp_skill_md.py` 生成标题为 `# AISP Skill (run with an executor)` 的标准接口，保留 generated/source/generator 标记。两消息引导程序的 id 是 `run_with_executor_aisp`，仅代表接口内部程序，**不是独立分发的第二个技能**，不对它递归要求目录、README 或 SKILL.md。
 
-# Yijing Divination (AISP-backed)
-
-This `SKILL.md` is a thin discovery bridge, not the source of truth.
-The executable source of truth is the same-folder `aisp.aisop.json` (AISP V1.0.0 skill over an AISOP V1.0.0 program).
-Runtime compatibility note: hard execution requires a conforming AISP/AISOP runtime; this bridge alone is only a discovery and loading guide.
-
-When invoked:
-1. Load `aisp.aisop.json`.
-2. Execute `RUN aisop.main`.
-3. Treat `user.content.aisp_contract` as the skill contract,
-   `user.content.aisop.main` as the topology, `user.content.functions` as node ops.
-4. Load resources (declared in `aisp_contract.resources`) only when a node reads them.
-   Never skip required nodes.
-```
-
-Bridge 字段投影：
+字段投影：
 
 | `SKILL.md` 字段 | 来源 | 约束 |
 |-----------------|------|------|
@@ -608,34 +609,82 @@ Bridge 字段投影：
 | `license` | `system.content.license` | 默认 `Apache-2.0` |
 | `metadata.generated_from_aisp` | 生成器标记 | 生成桥固定为 `"true"` |
 | `metadata.aisp_program` | 同目录程序路径 | MUST 为 `aisp.aisop.json`；禁止绝对路径、URL、子目录或 `..` 逃逸 |
-| `metadata.bridge_mode` | 桥形态标记 | 生成 sidecar SHOULD 写 `native_sidecar` |
-| `allowed-tools` | `system.content.tools` | 仅在宿主平台支持该字段时写入 |
+| `metadata.protocol` | 协议标记 | MUST 为 `AISP V1.0.0` |
+| `metadata.bridge_mode` | 接口标记 | MUST 为 `agent_skills_bridge` |
 
-生成的 bridge 不得发明自定义顶层 frontmatter key（例如 `compatibility`）；runtime compatibility 与 hard-execution boundary 应写在正文，或写入目标平台明确接受的 documented metadata。
+标准头部使用 `name`、`description`、`license`、`metadata`，MUST NOT 增加 `compatibility` 等自定义键；用 JSON 引号字符串确定性转义 YAML。外层 `license` 从业务技能派生，默认 Apache-2.0；固定引导程序自身的 Apache-2.0 只覆盖引导程序，不改写业务包许可。
 
-默认规则：
+### 20.1 执行器配置与执行
 
-- Core AISP conformance：缺少 `SKILL.md` 仍然允许。
-- Authoring / scaffold tools：默认生成 `SKILL.md`，除非用户 opt out。
-- 公开 examples、release packages、registry distributions：SHOULD 包含 `SKILL.md`；缺失是 ecosystem warning，不是 core failure。
+引导程序 `system.content.params` 恰含五个非空命令字符串（`executor`、`executor_version`、`executor_command`、`executor_install`、`executor_help`）和一个 `executor_version_policy` 对象。禁止重复或额外键。`executor_version` 仍是版本查询命令，不是版本约束。策略对象恰含 `requirement` 与 `source`：
 
-Sidecar 生成与验证：
+```json
+{
+  "executor_version_policy": {
+    "requirement": ">=1.0.1",
+    "source": "latest_stable"
+  }
+}
+```
+
+上面版本号只是示例，不是协议永久最低版本。参考工具的有限语法是 `>=X.Y.Z` 或 `==X.Y.Z`，只接受稳定的三段数字版本。`source` 为 `latest_stable`（自动解析的下限）或 `explicit`（用户/作者明确约束）；前者 MUST 使用 `>=`。按数字分量比较，不按字符串比较。预发行或含糊的执行器报告应停止；默认解析遇到不支持的稳定版本形式会报错，不静默选择更旧版本。
+
+SoulRun 只是默认适配器，**不是协议依赖或强制厂商**。首次生成、可识别且尚无版本策略的旧版迁移，或显式刷新默认托管策略时，参考生成器查询官方 PyPI 的最新非开发、非预发布、未撤回稳定版，冻结为具体下限；返回的元数据必须标识 SoulRun 项目，这项一致性检查不是独立的来源信任核验。运行期兼容检查不查询 latest，也不替换冻结下限；确需安装时，获用户同意后的安装可以访问包源。已存的显式约束优先，即使刷新也保留；新的 CLI 显式约束优先于已有策略和默认值。其他执行器配置自己的命令与显式版本约束；此工具不回退到 SoulRun，也不凭空为其他厂商构造版本解析器。
+
+只有一条版本条件引导、一个核心判断：所配执行器已安装的包版本是否满足冻结约束。满足就直接执行；已证实缺失或不满足才询问安装，安装后再核对同一条件；探测出错就停止。下表是同一规则在不同约束下的示例，不是多种引导类型。
+
+| 版本要求 | 已安装状态 | 引导行为 |
+|---|---|---|
+| `>=1.0.0` | 1.0.0 或更高 | 直接运行，不询问安装/升级 |
+| `>=1.0.0` | 未安装或低于下限 | 询问安装满足下限的最新稳定版 |
+| `==1.0.0` | 恰为 1.0.0 | 直接运行 |
+| `==1.0.0` | 未安装或任何其他版本，包括 1.0.1 | 询问安装恰好 1.0.0；涉及降级必须明示 |
+| 任一 | 版本报告未知、权限拒绝、超时或执行器不可用 | 停止，不猜测兼容，也不自动重装 |
+
+安装命令必须符合策略：默认适配器生成 `python -m pip install --upgrade "soulrun>=X.Y.Z"` 或 `python -m pip install "soulrun==X.Y.Z"`。显式选定或刷新策略时，这两种精确生成格式（以及旧的不固定版本默认命令）都会对应更新，即使命令原约束与已存策略不一致。精确版本不得改成不固定版本的 latest 安装。自定义命令保持不变，但不能确定目标时须在安装前停止，不静默改写命令。用户拒绝、安装失败，或安装后复查失败/无法解析/仍不满足约束，都不执行，也不自动重试。检查的是所配执行器自身包版本，不是 AISP 协议或内嵌引擎版本。版本满足不豁免技能自身的业务确认门。
+
+只有探测能证实所配执行器包或入口确实不存在时，才能判为未安装；包括 `python -m` 等启动器可用、但执行器模块确实缺失的情形。无关依赖/辅助程序缺失、命令错误、权限拒绝、超时及含糊失败均属不可用，不是重装许可。
+
+默认调用传入技能目录、项目 `.soulrun_cache` 目录、用户消息文件、`--host-tool "agent=<宿主能力>"`，不加 session id（§4.2）。
+
+固定引导程序检查冻结约束，需要安装/升级/降级时先问用户，安装后复查，再交给执行器；拒绝安装或执行器不可用时，技能不运行。宿主 MUST NOT 绕过执行器自行执行或续跑业务程序；经执行器读取和用户要求的代码审查仍允许。执行器尚不存在时，确认和版本检查依赖宿主，引导程序本身不是运行期硬保证。状态分类和会话边界见 §4.2。
+
+### 20.2 确定性生成与明确迁移
+
+生成有三项输入：业务程序、执行器配置（五个命令字符串和冻结版本策略）、生成器修订（以实际工具内容摘要标识）。默认解析在排版前给出具体策略，不是隐含的运行期联网依赖。不新增配置文件、模板注册中心或执行器注册中心。
+
+Registry manifest 1.1 新增完整双消息程序规范化哈希 `program_sha256`，并纳入 `package_sha256`。schema 仍接受旧 1.0，但旧版不绑定业务函数修改。这些是完整性覆盖域，不是整个归档覆盖：未声明文件及生成式 SKILL.md 的执行器配置不会自动绑定。须另行审查或固定实际接口；哈希一致及生成标记均不认证命令、版本或信任。此产物版本调整不改变 AISP V1.0.0。
+
+| 已有输入 | 生成/预览 | 只读检查 |
+|---|---|---|
+| 缺少接口 | 首次生成，采用默认值 | FAIL M7 |
+| 精确识别的旧投影或五字符串可调用性引导 | 明确迁移，保留命令并解析默认策略或采用显式约束；`--write` 报告迁移 | FAIL M7，检查不解析默认值或迁移 |
+| 精确识别的上一版版本策略引导（仅按可执行文件判断缺失） | 明确迁移，保留命令和冻结策略；除请求刷新或显式覆盖外，不查询版本 | FAIL M7，检查不解析默认值或迁移 |
+| 合法新版引导程序 | 保留命令及策略；派生/更新 name、description、license | 核对三项派生头部及全部固定接口 |
+| JSON 损坏、重复/缺少/额外键、命令字符串为空/类型错误或策略形状错误 | FAIL，不回退 | FAIL，文件不变 |
+| 未知手写内容或固定正文漂移 | FAIL，不静默覆盖；须显式恢复固定正文 | FAIL，文件不变 |
+
+更换执行器配置五个命令字符串和显式版本策略，再检查；普通重生成离线保留合法值。默认适配器可用 `--executor-version-requirement '>=1.0.0'` 或 `'==1.0.0'` 一致更新标准安装命令。`--refresh-executor-version` 只查询默认托管策略，绝不覆盖显式约束。元数据缺失、联网失败或版本不支持均失败，不回退到已存版本。批量生成每批只解析一次默认值，写入前预检所有输入。`--check`/`--check-all` 离线只读，禁止与生成/刷新选项组合。预览与写入选值一致，预览不写文件；不得通过删除已配置接口来模拟刷新、丢弃用户显式选择。实际 I/O 失败分别报告已完成、失败/可能部分写入、未尝试文件，不假称整体原子成功。
+
+写出采用 UTF-8 无 BOM、LF、一个尾部换行。比较时去前导 BOM、将 CRLF/CR 归一成 LF 并归一尾部换行；其余固定文字、JSON 排版、metadata 均须标准一致。核心与桥检查共用同一个只读 M7 函数，不反调核心；原有资源、路径、红线错误仍然可见。
+
+生成与校验：
 
 ```bash
 python -B tools/aisp_skill_md.py examples --check-all
 python -B tools/aisp_validate_agent_skill_bridge.py examples/aisp --strict-readme
 ```
 
-Sidecar 生成检查通过只证明 `SKILL.md` 与 `aisp.aisop.json` 的确定性投影一致。Bridge 检查通过只证明 sidecar 形状正确、指针被限制在同目录 `aisp.aisop.json`、原生 AISP 通过验证。二者都不证明外部信任、registry 认可，也不证明非 AISOP 平台能提供硬执行保证。
+M7 通过只证明引导程序未改、格式正确，包含技能派生头部；不认证执行器配置是否对应可用或兼容的执行器，`echo available`/`echo done` 替身也可能满足字符串格式。桥检查另验证原有头部/路径约束和原生包一致性。二者都不证明外部信任、安全、registry 认可、运行期行为或执行完成。运行不可信包前应外部核验 provenance 或取得用户信任裁决；包内生成标记不能授予信任。
 
 ---
 
 ## 21. 生命周期
 
-技能的生成、进化、分发是 **AISP 原生、工具无关**的——由作者自选的外部工具承担。AISP 定义的是*技能包*以及每个阶段技能必须满足的一致性（M1–M6），**而非**工具链。下列描述规定任何符合规范的工具 MUST 做到什么，与具体实现无关。
+技能的生成、进化、分发是 **AISP 原生、工具无关**的——由作者自选的外部工具承担。AISP 定义的是*技能包*以及每个阶段技能必须满足的一致性（M1–M7），**而非**工具链。下列描述规定任何符合规范的工具 MUST 做到什么，与具体实现无关。
 
-- **生成**：生成器建 `aisp/<id>_aisp/aisp.aisop.json`（瘦合同 + 富 Tier A）+ 自定义资源；校验 `id`==文件夹名且以 `_aisp` 结尾、每条 `enforced_by` 真实、资源路径合法、functions 引用的资源已声明；产/更新 `aisp_list.json`；生成单技能 `README.md`，并默认生成同目录 `SKILL.md` sidecar，除非作者明确 opt out。生成的技能 MUST 仍满足核心 M1–M6。
-- **进化**：可改合同字段（invocation/non_negotiable/discovery/risk/resources）或 functions/aisop.main；改资源进入一个有意的进化/编辑步骤 + changelog + 安全扫描；不删安全约束、不降 risk、不擅扩 tools。
+- **生成**：生成器建 `aisp/<id>_aisp/aisp.aisop.json`（瘦合同 + 富 Tier A）和自定义资源；验证 id 与 `_aisp` 目录相同、enforced_by 真实、路径合法、函数资源已声明；更新发现索引，生成 README 和必需的同目录 SKILL.md，技能 MUST 满足 M1～M7。先完成资源/快照变化和清单，再生成接口与 README，最后只读核对。
+- **进化**：可改合同字段（invocation/non_negotiable/discovery/risk/resources）或 functions/aisop.main；改资源进入一个有意的进化/编辑步骤 + changelog + 安全扫描；MUST NOT 在缺乏正当理由的情况下删除安全约束、降低 `risk` 或扩大 `tools`。
 - **Registry / 分发**：以技能文件夹为分发单元。AISP 是 registry 无关的，不构建也不要求特定 registry；任何 registry MAY 索引 discovery + invocation + risk + provenance（hash）；信任/评分/扫描由 registry 生成，不信自报。
 
 ---
@@ -658,7 +707,7 @@ Sidecar 生成检查通过只证明 `SKILL.md` 与 `aisp.aisop.json` 的确定�
       "version": "1.0.0",
       "license": "Apache-2.0",
       "summary": "Cast and interpret an I Ching (Yijing) hexagram for a user's question.",
-      "description": "Native AISP skill: clarify the question, cast a hexagram via a deterministic toss, and interpret it for reflection (not deterministic prediction).",
+      "description": "Native AISP skill: clarify the question, cast a hexagram randomly, and interpret it for reflection (not deterministic prediction).",
       "flow_format": "mermaid",
       "loading_mode": "node",
       "tools": ["filesystem", "code"],
@@ -707,8 +756,8 @@ Sidecar 生成检查通过只证明 `SKILL.md` 与 `aisp.aisop.json` 的确定�
         "interpret": {
           "step1": "sys.assert('hexagram != null', 'No hexagram has been cast')",
           "step2": "sys.io.read('data/interpretation_guide.md') -> guide",
-          "step3": "sys.llm.json('Interpret the hexagram for the question using guide', schema={summary:'string', guidance:'string', changing_lines:'array', disclaimer:'string'}) -> reading",
-          "step4": "sys.assert(\"'reflection' in reading.disclaimer.lower() or 'not deterministic' in reading.disclaimer.lower()\", 'Reading must state it is for reflection, not deterministic prediction')",
+          "step3": "sys.llm.json('Interpret the hexagram for the question using guide; set disclaimer exactly to: For reflection only, not deterministic prediction.', schema={summary:'string', guidance:'string', changing_lines:'array', disclaimer:'string'}) -> reading",
+          "step4": "sys.assert(\"reading.disclaimer == 'For reflection only, not deterministic prediction.'\", 'The required disclaimer must match the declared wording')",
           "step5": "Render reading as Markdown.",
           "constraints": ["Ground the interpretation in the cast hexagram and guide; do not fabricate hexagrams."]
         },
@@ -733,7 +782,7 @@ Sidecar 生成检查通过只证明 `SKILL.md` 与 `aisp.aisop.json` 的确定�
 |------|----------|
 | 技能身份 | [ ] 合法 AISOP 程序（必填字段 + `aisop.main`）；`protocol: AISP V1.0.0`；`license` 存在或默认 Apache-2.0 |
 | 入口路径 | [ ] `aisp/<id>/aisp.aisop.json`；`id` 等于文件夹名且以 `_aisp` 结尾 |
-| 合同 | [ ] `user.content.aisp_contract` 是 user 消息中的真 object；`profile` 以 `aisp.skill.` 开头；含 `invocation` 与 `non_negotiable` |
+| 合同 | [ ] `user.content.aisp_contract` 是 user 消息中的真 object；`profile` 为带版本的 `aisp.skill.v<major>`；含 `invocation` 与 `non_negotiable` |
 | 运行指令 | [ ] `instruction` 强硬点名合同并运行图，例如 `STRICTLY OBEY aisp_contract; ... then RUN aisop.main` |
 | 红线 | [ ] 每条 `non_negotiable.enforced_by` 目标真实存在；高风险动作使用 `sys.io.confirm` 和/或 `sys.assert` |
 | 资源 | [ ] 资源路径相对且不逃逸；声明 mode；script 声明 `requires_tools`；远程使用有门控 |
@@ -742,7 +791,7 @@ Sidecar 生成检查通过只证明 `SKILL.md` 与 `aisp.aisop.json` 的确定�
 | 每技能 README | [ ] 发布用的 `*_aisp/README.md` 由 `aisp.aisop.json` 生成；strict/release 可让缺失、手写、漂移、source 错误或 generator 不受支持失败 |
 | Runtime | [ ] Runtime 读取合同、保留 user 消息里的合同、遵守开放世界 AISOP 兼容性、执行 `enforced_by`、不绕过 `sys.io.confirm` |
 | Tier A | [ ] 角色、原则、知识放在 functions；失败条件放在 `aisop.main` / `sys.*`；结构化输出用 `sys.llm.json`；图有结束节点 |
-| Sidecar bridge | [ ] Authoring / distribution 默认生成同目录 `SKILL.md`，除非明确 opt out；它使用官方字段、合法 `name`、安全 `aisp.aisop.json` 指针、生成标记和薄引导；不复制 AISP 逻辑 |
+| M7 兼容接口 | [ ] 同目录 SKILL.md 存在；派生 name/description/license 和固定执行器引导正文一致；仅五个命令字符串和合法冻结版本策略可变；指针限同目录；不复制业务逻辑，无 opt-out |
 
 参考工具映射：
 
@@ -755,7 +804,7 @@ Sidecar 生成检查通过只证明 `SKILL.md` 与 `aisp.aisop.json` 的确定�
 
 ## 24. 诚实边界
 
-1. **native-only 的代价 = 失去现有平台直接可运行性**：SKILL.md 已被 Claude Code/Codex/Gemini/Copilot/Cursor 共同支持；原生 AISP 技能需 AISP/AISOP runtime 才能跑。缓解 = authoring / distribution 默认生成同目录 `SKILL.md` sidecar bridge，同时保持 core 可选（§20）。明牌。
+1. **桥接口不等于执行器**：必需的生成式 SKILL.md 支持发现和交给执行器，不自行提供硬执行。无可用合规执行器（默认 SoulRun）就停止，不自行执行。安装确认和不可信包的信任门仍属宿主/消费方责任（§20）。
 2. **依赖 AISOP 开放世界**（R4）：两点 — ①`aisp_contract`/`license` 是 AISOP 字段表外的键，靠"容忍额外键"；②`protocol` 值改为 `AISP V1.0.0`，靠 AISOP "不以 protocol 值设门"。AISOP 参考实现两点都满足；但**封闭世界严格校验器（拒未知键）或硬校验 `protocol=="AISOP V1.0.0"` 的工具会拒** AISP 文件。AISOP spec 不强制这类封闭校验，但这是 AISP 的明牌依赖。
 3. **结构化回报在机器侧**（校验/进化/registry/Axiom0 链 + 身份一致），非模型 adherence；真保证只有 policy-as-code（`enforced_by→sys.*`），NL 规则是 policy-as-prompt（软）。
 4. **信任不自报**；trust/verified 由 runtime/registry/用户/扫描器判。
@@ -765,7 +814,7 @@ Sidecar 生成检查通过只证明 `SKILL.md` 与 `aisp.aisop.json` 的确定�
 
 ## 25. 常见错误
 
-1. 技能内含/依赖 SKILL.md 跑逻辑 ✗ → 真相在 `aisp.aisop.json`；SKILL.md 只是默认生成但 core 可选的 sidecar bridge。
+1. 把业务逻辑放进 SKILL.md，或以“可选”为由省略它，均错误：业务真相只在 aisp.aisop.json，M7 同时要求生成式、仅交给执行器的兼容接口。
 2. 合同塞进 `system_prompt`（JSON-in-string）✗ → 用 `user.content.aisp_contract` 真 object。
 3. 文件名不统一 / `id` ≠ 文件夹名 / 不以 `_aisp` 结尾 ✗。
 4. `enforced_by` 指向不存在的 node.stepN:mechanism，或指向 `node.step_note:mechanism` 这类元数据字段 ✗。
@@ -807,7 +856,7 @@ aisp/
     aisp.aisop.json
     README.md                       # SHOULD：由 aisp.aisop.json 生成
     data/ | scripts/ | <custom>/    # 自定义布局，由 resources 声明
-    SKILL.md                        # 可选：Agent Skills sidecar bridge
+    SKILL.md                        # MUST：生成式 Agent Skills 兼容接口
   _shared/                          # 共享资源
 ```
 
@@ -832,11 +881,11 @@ library only) and human-auditable. It MUST NOT: access the network; import
 third-party packages; execute skill scripts; modify any file except
 aisp_list.json when --json is explicitly used; read files outside the aisp/
 directory (except declared _shared metadata). The reference implementation below
-meets all of these: it imports only `json` and `sys` from the stdlib, globs only
-`*_aisp/aisp.aisop.json` under its own directory, and writes only
+meets all of these: it imports only standard-library modules, scans only
+`*_aisp` folders under its own directory, and writes only
 `aisp_list.json`.
 """
-import json, sys
+import json, re, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -850,12 +899,35 @@ Options:
   --help   show this help
 """
 
+def _unique_object(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate JSON key: {key}")
+        value[key] = item
+    return value
+
+
+def _reject_constant(value):
+    raise ValueError(f"non-JSON numeric constant: {value}")
+
+
 def discover():
     skills = []
     errors = []
-    for f in sorted(ROOT.glob("*_aisp/aisp.aisop.json")):
+    for skill_dir in sorted(ROOT.glob("*_aisp")):
+        if not skill_dir.is_dir() and not skill_dir.is_symlink():
+            continue
+        f = skill_dir / "aisp.aisop.json"
         try:
-            data = json.loads(f.read_text(encoding="utf-8-sig"))
+            resolved = f.resolve()
+            if not resolved.is_relative_to(ROOT.resolve()) or not resolved.is_relative_to(skill_dir.resolve()):
+                raise ValueError("skill entry escapes the discovery directory or its skill folder")
+            data = json.loads(f.read_text(encoding="utf-8-sig"), object_pairs_hook=_unique_object, parse_constant=_reject_constant)
+            if (not isinstance(data, list) or len(data) != 2
+                    or any(not isinstance(message, dict) for message in data)
+                    or [message.get("role") for message in data] != ["system", "user"]):
+                raise ValueError("skill must have exactly system/user messages")
             sc = data[0]["content"]                  # system: id/name/summary metadata
             uc = data[1]["content"]                  # user: instruction/aisop/functions + aisp_contract
         except Exception as e:
@@ -867,22 +939,46 @@ def discover():
         if not isinstance(uc, dict):
             errors.append(f"{f}: user.content must be an object")
             continue
+        if not isinstance(sc.get("name"), str) or not sc["name"].strip() or any(
+            key in sc and not isinstance(sc[key], str) for key in ("summary", "description")
+        ):
+            errors.append(f"{f}: name/summary/description metadata has an invalid type")
+            continue
         c = uc.get("aisp_contract", {})              # real object field in the user message
         skill_id = sc.get("id")
-        if not skill_id:
-            errors.append(f"{f}: missing system.content.id")
+        if not isinstance(skill_id, str) or skill_id != skill_dir.name or not re.fullmatch(r"[a-z0-9_]+_aisp", skill_id):
+            errors.append(f"{f}: system.content.id must match the _aisp folder name")
             continue
-        if not isinstance(c, dict) or not str(c.get("profile", "")).startswith("aisp.skill."):
-            errors.append(f"{f}: missing aisp.skill.* profile")
+        if not isinstance(c, dict) or not isinstance(c.get("profile"), str) or not re.fullmatch(r"aisp\.skill\.v[0-9]+", c["profile"]):
+            errors.append(f"{f}: missing versioned aisp.skill.v<major> profile")
+            continue
+        discovery = c.get("discovery", {})
+        invocation = c.get("invocation")
+        if not isinstance(discovery, dict) or not isinstance(invocation, dict):
+            errors.append(f"{f}: discovery and invocation must be objects")
+            continue
+        if "risk_level" in c and c["risk_level"] not in ("low", "medium", "high", "critical"):
+            errors.append(f"{f}: risk_level has an invalid value")
+            continue
+        if any(not isinstance(invocation.get(k), list) or not invocation[k]
+               or any(not isinstance(v, str) for v in invocation[k])
+               for k in ("when_to_use", "when_not_to_use")):
+            errors.append(f"{f}: invocation lists must be non-empty string arrays")
+            continue
+        if ("category" in discovery and not isinstance(discovery["category"], str)) or (
+            "tags" in discovery and (not isinstance(discovery["tags"], list)
+                                     or any(not isinstance(tag, str) for tag in discovery["tags"]))
+        ):
+            errors.append(f"{f}: category/tags metadata has an invalid type")
             continue
         skills.append({
             "id": skill_id,
             "name": sc.get("name"),
             "summary": sc.get("summary") or sc.get("description", ""),
             "path": str(f.relative_to(ROOT.parent)).replace("\\", "/"),
-            "category": c.get("discovery", {}).get("category"),
-            "tags": c.get("discovery", {}).get("tags", []),
-            "when_to_use": c.get("invocation", {}).get("when_to_use", []),
+            "category": discovery.get("category"),
+            "tags": discovery.get("tags", []),
+            "when_to_use": invocation["when_to_use"],
             "risk_level": c.get("risk_level"),
         })
     return skills, errors
@@ -914,20 +1010,33 @@ def main():
         print(f"- {s['id']}: {s['summary']}  ->  {s['path']}")
     print(f"\n{len(skills)} AISP skill(s).")
     expected = render_index(skills)
+    out = ROOT / "aisp_list.json"
+    if ("--check" in sys.argv or "--json" in sys.argv) and out.is_symlink():
+        print("ERROR: aisp_list.json must not be a symbolic link", file=sys.stderr)
+        return 1
     if "--check" in sys.argv:
-        out = ROOT / "aisp_list.json"
         if not out.exists():
             print(f"{out} is missing; run python -B aisp_list.py --json", file=sys.stderr)
             return 1
-        actual = out.read_text(encoding="utf-8-sig")
+        try:
+            actual = out.read_text(encoding="utf-8-sig")
+        except (OSError, UnicodeError) as exc:
+            print(f"ERROR: cannot read aisp_list.json: {exc}", file=sys.stderr)
+            return 1
         if normalized(actual) != normalized(expected):
             print(f"{out} is stale; run python -B aisp_list.py --json", file=sys.stderr)
             return 1
         print("aisp_list.json ok")
         return 0
     if "--json" in sys.argv:
-        out = ROOT / "aisp_list.json"
-        out.write_text(expected, encoding="utf-8", newline="\n")
+        try:
+            if out.exists() and out.stat().st_nlink > 1:
+                print("ERROR: refusing to overwrite a hardlinked aisp_list.json", file=sys.stderr)
+                return 1
+            out.write_text(expected, encoding="utf-8", newline="\n")
+        except OSError as exc:
+            print(f"ERROR: cannot write aisp_list.json: {exc}", file=sys.stderr)
+            return 1
         print(f"Wrote {out}")
     return 0
 
@@ -967,10 +1076,10 @@ if __name__ == "__main__":
 
 ```text
 AISP = AI 技能协议（V1.0.0）。
-技能 = aisp/<id>_aisp/aisp.aisop.json + 自定义资源 + _shared/。无 core 必需 SKILL.md；authoring / distribution SHOULD 默认包含同目录 sidecar，除非 opt out。
+技能 = aisp/<id>_aisp/aisp.aisop.json + 必需的同目录生成式 SKILL.md + 已声明资源（使用共享资源时包含相应共享资源）。M7 检查存在、派生头部、固定引导正文，无 opt-out。
 合同 = user.content.aisp_contract（真 object）：invocation + non_negotiable.enforced_by + discovery + risk_level + resources。
 其余归位 aisop.main / functions / sys.*。system_prompt 可空。
-执行=AISOP，生命周期（生成/进化/分发）=AISP 原生、工具无关。与 Agent Skills 互补（默认生成但 core 可选的 SKILL.md sidecar）。
+执行=AISOP，由合规执行器承担，默认 SoulRun；无执行器就停止，不自行执行。生命周期仍为 AISP 原生、工具无关。Agent Skills 提供必需兼容接口，不是业务真相或信任来源。
 硬规则只走 enforced_by→sys.*。信任绝不自报。
 ```
 

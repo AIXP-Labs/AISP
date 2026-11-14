@@ -15,8 +15,14 @@
     "resources"
   ],
   "additionalProperties": true,
+  "allOf": [
+    {
+      "if": { "properties": { "manifest_version": { "const": "1.1" } }, "required": ["manifest_version"] },
+      "then": { "required": ["program_sha256"] }
+    }
+  ],
   "properties": {
-    "manifest_version": { "const": "1.0" },
+    "manifest_version": { "enum": ["1.0", "1.1"] },
     "protocol": { "const": "AISP V1.0.0" },
     "skill_id": { "type": "string", "pattern": "^[a-z0-9_]+_aisp$" },
     "skill_version": { "type": "string", "minLength": 1 },
@@ -28,10 +34,14 @@
       "pattern": "^[a-z0-9_]+_aisp$"
     },
     "contract_sha256": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
+    "program_sha256": {
+      "type": "string", "pattern": "^[A-Fa-f0-9]{64}$",
+      "description": "Canonical JSON SHA-256 of the complete two-message program; required in manifest 1.1. Legacy 1.0 manifests do not bind the business body."
+    },
     "resources_sha256": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
     "package_sha256": {
       "type": "string",
-      "description": "Canonical hash of package content evidence, excluding host-local paths and provenance fields such as source and commit.",
+      "description": "Canonical hash of identity, contract and declared-resource evidence; manifest 1.1 additionally includes program_sha256. Excludes host-local paths, source/commit and undeclared/interface files. Not an archive-wide hash or trust proof.",
       "pattern": "^[A-Fa-f0-9]{64}$"
     },
     "resources": {

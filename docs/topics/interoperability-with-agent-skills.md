@@ -1,122 +1,87 @@
 # Interoperability with Agent Skills
 
-AISP is designed to coexist with Agent Skills (`SKILL.md`), not to replace it. A native AISP skill does not require `SKILL.md` for core conformance, but authoring and public-distribution workflows SHOULD add a thin same-folder sidecar bridge by default unless the author explicitly opts out. This document explains where each layer sits, how the default-but-core-optional bridge works, and the honest cost of staying native.
+AISP is an executable, governable skill package built on AISOP and bridged to agent platforms through the Agent Skills standard.
 
----
-
-## Introduction
-
-Agent Skills is a cross-vendor open standard for prose-and-disclosure skills, already supported by major agent platforms. AISP occupies a layer Agent Skills does not address: an *executable, governable* skill whose body is a real AISOP program with machine-verifiable red lines. Rather than competing, AISP absorbs the spirit of Agent Skills and offers a same-folder sidecar bridge for interop.
-
----
+Every conformant AISP package MUST include the generated same-folder `SKILL.md` compatibility interface (M7). The business source of truth is only `aisp.aisop.json`. The fixed interface bootstrap delegates execution to an available conforming executor, SoulRun by default; without one, stop rather than executing or continuing the skill yourself.
 
 ## Each Layer in the Stack
 
 | Layer | Role | Domain |
-|-------|------|--------|
-| **Agent Skills (`SKILL.md`)** | Prose instructions + progressive disclosure; cross-vendor portability | agentskills.io |
-| **AISOP** | The execution language a skill body is written in — AISP's only base | aisop.dev |
-| **AISP** | The skill package: folder, contract, discovery, `enforced_by → sys.*` | aisp.dev |
+|---|---|---|
+| Agent Skills | Standard discovery and compatibility interface | agentskills.io |
+| AISOP | Execution language: graph, functions and real `sys.*` mechanisms | aisop.dev |
+| AISP | Package, contract, resources and conformance | aisp.dev |
+| Executor | Runs under AISP/AISOP runtime requirements; replaceable | SoulRun by default, soulrun.dev |
 
-> **AIAP** and the other AIXP protocols (e.g. `aiap.dev`) are **sibling projects** in the AIXP family, not part of AISP's stack.
+AIAP and other AIXP protocols remain sibling projects, not dependencies in AISP's stack. AISP does not replace Agent Skills or turn it into the business program.
 
-### Complementary, Not Competing
+## Required Interface
 
-AISP keeps the **spirit** of Agent Skills — a reusable capability, triggering, progressive disclosure, resources — and discards its **form** (the Markdown body). What AISP adds is exactly what prose skills lack:
+M7 checks all three conditions:
 
-| Agent Skills lacks | AISP provides |
-|--------------------|---------------|
-| An executable body | A real AISOP V1.0.0 program (`aisp.aisop.json`) |
-| Machine-verifiable red lines | `non_negotiable.enforced_by → sys.*` (M4) |
-| A declared resource inventory + gates | `resources` with `mode` gating, path confinement |
-| Trust that cannot be self-declared | M6 / SE6 — trust judged externally |
+1. Same-folder `SKILL.md` exists.
+2. `name`, `description` and outer `license` equal the skill-derived values.
+3. Metadata and fixed bootstrap match the generator; only valid launch strings and the frozen version policy may differ.
 
-Public framing: **"AISP does not replace Agent Skills; it provides executable, verifiable, governable skills alongside them, and can include a thin `SKILL.md` sidecar to interoperate with Agent Skills platforms."**
+The derived name drops `_aisp`, hyphenates underscores and uses lowercase; it must be at most 64 characters and contain neither `anthropic` nor `claude`. Description derives from summary plus invocation triggers/exclusions, is injection-safe and at most 1024 characters. Outer license derives from the business skill, defaulting to Apache-2.0.
 
----
+The canonical header contains `name`, `description`, `license`, `metadata`, with JSON-quoted YAML strings. Metadata fixes `generated_from_aisp: "true"`, `aisp_program: "aisp.aisop.json"`, `protocol: "AISP V1.0.0"`, and `bridge_mode: "agent_skills_bridge"`. No absolute/remote/subdirectory/traversal target or custom top-level key is allowed.
 
-## The Default `SKILL.md` Sidecar Bridge
+The body is titled `# AISP Skill (run with an executor)` and retains the generated/source/generator markers. Its internal `run_with_executor_aisp` program is a fixed bootstrap, not a separately distributed second skill or a copy of business functions/resources/red lines. The bootstrap's Apache-2.0 license does not override the business package license.
 
-A native AISP skill does not require `SKILL.md` for core conformance. For generated, scaffolded, or public-distribution packages, tooling SHOULD create a thin same-folder `SKILL.md` sidecar bridge by default unless the author explicitly opts out. The bridge only **guides** loading and running the local `aisp.aisop.json` — it never copies the logic, and deleting it leaves the skill fully working under an AISP/AISOP runtime.
+## Launch Configuration and Version Policy
 
-```markdown
----
-name: yijing
-description: Cast and interpret an I Ching (Yijing) hexagram for a question. Use when asked for a yijing/I Ching reading or hexagram interpretation. Do not use for medical, legal, or financial decisions needing a professional.
-license: Apache-2.0
-metadata:
-  generated_from_aisp: "true"
-  aisp_program: aisp.aisop.json
-  protocol: AISP V1.0.0
-  bridge_mode: native_sidecar
----
+There is one bootstrap flow and one core decision: whether the configured executor package version satisfies the frozen requirement. The five launch strings are configuration values, not five bootstrap types; different acceptance scenarios exercise this same flow.
 
-# Yijing Divination (AISP-backed)
+Only `system.content.params` in the bootstrap may supply:
 
-This `SKILL.md` is a thin discovery bridge, not the source of truth.
-The executable source of truth is the same-folder `aisp.aisop.json`.
-Runtime compatibility note: hard execution requires a conforming AISP/AISOP runtime; this bridge alone is only a discovery and loading guide.
+- `executor`: default `soulrun`.
+- `executor_version`: default `soulrun --version`.
+- `executor_command`: SoulRun invocation passing the skill folder, project `.soulrun_cache`, user message file and actual `--host-tool "agent=<capability>"`.
+- `executor_install`: default-adapter command targeting the declared policy, such as `python -m pip install --upgrade "soulrun>=X.Y.Z"` or `python -m pip install "soulrun==X.Y.Z"`.
+- `executor_help`: default `soulrun`.
+- `executor_version_policy`: exactly `{"requirement": ">=X.Y.Z", "source": "latest_stable"}` or an explicit `>=X.Y.Z` / `==X.Y.Z` constraint with `source: explicit`.
 
-When invoked:
-1. Load `aisp.aisop.json`.
-2. Execute `RUN aisop.main`.
-3. Treat `user.content.aisp_contract` as the skill contract,
-   `user.content.aisop.main` as the topology, `user.content.functions` as node ops.
-4. Load resources (declared in `aisp_contract.resources`) only when a node reads them.
-   Never skip required nodes.
-```
+The five launch values remain non-empty strings; the policy is a strict two-field object. No missing, extra or duplicate keys. SoulRun is the default adapter, not a protocol dependency. On first generation or explicit refresh of its default-managed policy, the generator resolves the latest non-yanked stable release from official PyPI and freezes a concrete lower bound. Normal regeneration, read-only checks and runtime compatibility probes do not query the index or replace the frozen bound; a consented installation may access its package source. Explicit constraints always win, including over refresh. Other executors use their own commands and an explicit requirement, with no vendor fallback. No configuration file or executor registry is added; static validation does not certify actual availability or compatibility.
 
-### Field Projection
+With `>=1.0.0`, installed 1.0.0 or newer runs without asking to upgrade; missing/older versions require consent to install the latest stable release satisfying the bound. With `==1.0.0`, only exactly 1.0.0 runs; every other version requires consent to install exactly 1.0.0, explicitly disclosing any downgrade. Unknown output stops, and every installation must be followed by a matching version recheck. Installation refusal/failure/mismatch means no execution or automatic retry. Business confirmation gates remain mandatory. See [specification §20](https://github.com/AIXP-Labs/AISP/blob/main/specification/AISP_Protocol.md#20-interoperability) for the full bounded version syntax and failure rules.
 
-| `SKILL.md` field | Projected from | Rule |
-|------------------|----------------|------|
-| `name` | Same-folder AISP `id` | Drop `_aisp`, convert underscores to hyphens, lowercase; **MUST NOT contain "anthropic" or "claude"**; ≤ 64 |
-| `description` | `invocation` (`when_to_use` / `when_not_to_use`) | Includes triggers; ≤ 1024; injection-safe |
-| `metadata.generated_from_aisp` | Generator/projection provenance | Must be `"true"` for generated bridges |
-| `metadata.aisp_program` | Same-folder AISP package path | Must be `aisp.aisop.json`; no absolute path, URL, subdirectory, or `..` escape |
-| `metadata.protocol` | `system.content.protocol` | `AISP V1.0.0` |
-| `metadata.bridge_mode` | Bridge shape marker | SHOULD be `native_sidecar` for generated sidecars |
-| `allowed-tools` | `tools` | Space-separated + scoped when supported by the host platform |
-| `license` | `system.content.license` | Default `Apache-2.0` |
-
-Generated bridges MUST NOT invent custom top-level frontmatter keys such as `compatibility`; put runtime compatibility and hard-execution boundaries in the body text or in documented metadata accepted by the target platform.
-
-> The bridge is a projection, not a second source of truth. It guides a platform to load and run the AISOP program; the logic lives only in `aisp.aisop.json`.
-
-### Generated-Projection Marker
-
-A generated `SKILL.md` SHOULD declare its provenance in the frontmatter so consumers know it is a thin projection, not the source of truth:
-
-```yaml
-metadata:
-  generated_from_aisp: "true"
-  aisp_program: aisp.aisop.json
-  protocol: AISP V1.0.0
-  bridge_mode: native_sidecar
-```
-
-Add a one-line note in the body stating that the `SKILL.md` is a generated thin projection, not the source of truth. The native `aisp.aisop.json` remains authoritative; deleting the bridge leaves the skill fully working.
-
-Validate bridge examples with:
+## Generate, Migrate and Check
 
 ```bash
+python -B tools/aisp_skill_md.py examples/aisp/yijing_aisp --print
+python -B tools/aisp_skill_md.py examples/aisp/yijing_aisp --write
 python -B tools/aisp_skill_md.py examples --check-all
 python -B tools/aisp_validate_agent_skill_bridge.py examples/aisp --strict-readme
 ```
 
-A passing `aisp_skill_md.py --check` proves only sidecar projection consistency. A passing bridge check proves only bridge shape, safe same-folder path confinement, and native AISP validation. Neither proves external trust or hard execution on a non-AISOP platform. Missing `SKILL.md` is a core-conformant ecosystem warning unless a stricter release/generation profile required the default sidecar.
+Use `--executor-version-requirement '>=1.0.0'` or `'==1.0.0'` on generation to supply an explicit constraint. `--refresh-executor-version` refreshes only a default-managed bound; stored explicit constraints are preserved. Check modes reject these generation options and stay offline. Default resolution failure stops without a cached-version fallback.
 
----
+Generation uses the business program, five launch strings plus the frozen version policy and actual generator revision/digest. A missing interface uses defaults on explicit generation. Precisely recognized legacy projections and five-string bootstraps can be explicitly migrated, preserving existing launch strings and supplying a policy. The preceding version-policy bootstrap can also be explicitly migrated, preserving its commands and frozen policy offline unless refresh or an explicit override is requested. A read-only check fails until migration. Current valid configuration is preserved while derived header values are updated. Default metadata must identify SoulRun; this is an input consistency check, not independent provenance verification. Selecting or refreshing a policy updates either exact generated SoulRun install-command form even if its previous constraint disagrees; custom commands remain unchanged.
 
-## The Honest Cost of Native-Only
+Damaged JSON, bad launch configuration and version policy, unknown handwritten content or changed fixed bootstrap fails: no silent defaults, automatic repair or overwrite. Restore fixed text explicitly when drifted. Print/check never write; batch writes preflight all targets, and any later I/O error reports completed, failed/possibly partial and not-attempted files.
 
-A native AISP skill needs an AISP/AISOP runtime to run; it is **not** directly runnable on an Agent Skills platform without the sidecar bridge. This is a deliberate trade-off, stated plainly:
+Writing is UTF-8 without BOM, LF, one trailing newline. Comparison normalizes a leading BOM, CRLF/CR and trailing newlines; other fixed bytes remain canonical. Core and bridge checks share one read-only M7 function that never calls back into core validation. EC7 is the legacy interoperability mapping, not permission to omit the interface.
 
-- **What you gain (native):** an executable body, machine-verifiable red lines, governed lifecycle, declared resources — guarantees prose cannot offer.
-- **What you give up (native-only):** direct runnability on platforms that only understand `SKILL.md`.
-- **The mitigation:** the default same-folder `SKILL.md` sidecar bridge restores discoverability on those platforms, with zero duplication of logic.
+## Host and Runtime Boundaries
 
-AISP also depends on AISOP's open-world validation (it tolerates the extra `aisp_contract` / `license` keys and does not gate on the `protocol` value). A closed-world validator that rejects unknown keys, or one that hard-checks `protocol == "AISOP V1.0.0"`, will reject AISP files — a declared dependency, not a defect.
+The host must not bypass the executor to execute or continue `aisp.aisop.json`. Executor-mediated reads, such as its normal program interface, and user-requested code review are permitted.
+
+Before installation, the consent gate and version-report interpretation rely on host controls, not a nonexistent executor. Distinguish missing, unusable, incompatible/unverified version and runtime failure. The fixed bootstrap requires the configured executor package version to satisfy the frozen policy; command exit 0 alone is insufficient, and runtime failure must not trigger an automatic reinstall/upgrade. Static checks prove policy format, not true compatibility.
+
+A proven missing executor package/module behind an available launcher is still missing; the executable need not be absent. Missing unrelated dependencies/helpers, invalid commands, permission denial, timeout and ambiguous failures remain unusable and must not be concealed by reinstalling.
+
+Command exit 0 may indicate turn preparation or a waiting gate. Waiting is not consent; completion needs the run record's terminal status and corresponding output within the verified scope. Executors must preserve blocking human gates, red lines and independent dispatch for `execute_mode: "agent"`.
+
+No `--session-id` is added. The same default project/runtime scope supports one active session, including waits. Alternating windows does not isolate conversations; use stable host isolation or different project/runtime directories for concurrency.
+
+## What Passing Means
+
+M7 proves only unchanged bootstrap text and valid format, including derived header consistency. Even `echo available`/`echo done` substitutes can satisfy string format. Bridge validation also checks safe same-folder paths and native package conformance. None proves executor certification, external trust, safety or completed execution.
+
+Verify external provenance or obtain a user trust decision before running an untrusted package. Package-contained generated markers and hashes are not trust roots. Full executor compatibility and real-host tests are separate work; no platform success is inferred from static checks.
+
+AISP still relies on AISOP open-world validation: tolerate the extra contract/license fields and do not gate execution on a literal `protocol == "AISOP V1.0.0"`. See [the specification map](../specification.md) for normative details.
 
 ---
 

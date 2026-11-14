@@ -11,7 +11,7 @@ This README is a deterministic projection of `aisp.aisop.json`. The contract rem
 | Field | Value |
 | --- | --- |
 | Skill ID | `aisp_creator_evolution_aisp` |
-| Version | `1.0.0` |
+| Version | `1.0.1` |
 | Protocol | `AISP V1.0.0` |
 | License | `Apache-2.0` |
 | Risk Level | `medium` |
@@ -36,7 +36,9 @@ Create new conformant AISP skills, evolve existing ones, and adapt existing Agen
 
 ## How To Run
 
-With an AISOP runtime:
+This skill MUST run through a conforming AISP/AISOP executor (SoulRun by default; other conforming executors are allowed). Without an available executor, stop rather than executing or continuing the skill yourself.
+
+Through the executor's regular interface:
 
 1. Load `aisp.aisop.json`.
 2. Read `user.content.aisp_contract` before execution.
@@ -44,13 +46,15 @@ With an AISOP runtime:
 4. Enforce every `non_negotiable` rule and every referenced `sys.*` mechanism.
 5. Treat `sys.io.confirm` and other human-confirmation gates as blocking controls.
 
-With a generic AI or non-AISOP agent:
+With an Agent Skills host:
 
 - Treat this README as bootstrap guidance only.
 - Verify external provenance or obtain explicit human approval before executing an untrusted package.
-- Load the contract from `aisp.aisop.json`; do not treat this README as authoritative.
-- Follow `RUN aisop.main` and the non-negotiable rules on a best-effort basis.
-- Hard guarantees such as `sys.assert`, tool gating, and `sys.io.confirm` exist only in a conforming AISOP runtime.
+- Use the same-folder `SKILL.md` compatibility interface to hand execution to the executor; do not treat this README as authoritative.
+- Ask the user before installing an executor. Before installation, that confirmation depends on the host's controls, not an absent executor.
+- Do not bypass the executor to execute or continue `aisp.aisop.json`. Reading through its regular interface or user-requested code review is allowed.
+- Static interface checks prove only unchanged bootstrap text and valid format, not executor certification, safety or a completed run.
+- Hard guarantees such as `sys.assert`, tool gating, and `sys.io.confirm` require a conforming executor; command exit 0 alone does not mean execution completed.
 
 ## Non-Negotiable Rules
 
@@ -59,7 +63,7 @@ With a generic AI or non-AISOP agent:
 | Follow RUN aisop.main; route by intent and never skip research, validation, or human review. | `aisop.main` |
 | Required research MUST run via the research sub-graph, not ad-hoc browsing. | `run_research.step2:sys.assert` |
 | Design MUST NOT start until mandatory research has completed. | `assert_research_complete.step1:sys.assert` |
-| A delivered skill MUST be a conformant AISP skill (passes M1-M6 and safety checks); reject otherwise. | `validate_candidate.step5:sys.assert` |
+| A delivered skill MUST be a conformant AISP skill (passes M1-M7 and safety checks); reject otherwise. | `validate_candidate.step5:sys.assert` |
 | MUST obtain explicit human approval before delivering a candidate. | `review_candidate.step2:sys.io.confirm` |
 | Never write outside the resolved candidate root; never publish or perform destructive actions without confirmation. | `tools` |
 
@@ -103,6 +107,7 @@ With a generic AI or non-AISOP agent:
 | aisp_reference_doc_sync | aisp_reference_tools/check_doc_sync.py | reference | read_only | skill |  |
 | aisp_reference_markdown_links | aisp_reference_tools/check_markdown_links.py | reference | read_only | skill |  |
 | aisp_reference_tools_package | aisp_reference_tools/__init__.py | reference | read_only | skill |  |
+| missing_interface_seed | evals/candidate-seed.json | data | read_only | skill |  |
 | skill_template | templates/skill-template.md | template | read_only | skill |  |
 | validator | scripts/validate_aisp_skill.py | script | execute_only | skill |  |
 | simulate_aisp_flow | scripts/simulate_aisp_flow.py | script | execute_only | skill |  |
@@ -112,15 +117,17 @@ With a generic AI or non-AISOP agent:
 | runtime_trace_hard_pass_fixture | evals/runtime-traces/hard-pass.json | eval | read_only | skill |  |
 | runtime_trace_attested_warning_fixture | evals/runtime-traces/hard-attested-no-event.json | eval | read_only | skill |  |
 | runtime_trace_bad_shape_fixture | evals/runtime-traces/bad-shape.json | eval | read_only | skill |  |
+| research_shape_checker | scripts/check_research_result.py | script | execute_only | skill |  |
 
 ## Integrity
 
 | Hash | Value | Meaning |
 | --- | --- | --- |
-| `contract_sha256` | `6c56f0b2a8f64438736867a9011eb4722600a7abf01fc29f636d48dfe8e06f8f` | Recomputable hash of `user.content.aisp_contract` |
-| `resources_sha256` | `cedfb34fe097c794564763dfc173f7518f2cd0a2885585acc1b7466be13a520f` | Recomputable hash of declared resource records |
+| `program_sha256` | `001699f28b65a5ba886964eb1124e58eec63f64aca70e8a819ef3fc6fae8d216` | Canonical JSON hash of the complete two-message business program |
+| `contract_sha256` | `1eeca125f7613a84e9d40ec345452508a265622ee222862b0b38632a9ad7860c` | Recomputable hash of `user.content.aisp_contract` |
+| `resources_sha256` | `3cf334ac79362a9e050ea65ee83d4b400d599e28df318daf4992b1519102919b` | Recomputable hash of declared resource records |
 
-`package_sha256` is intentionally not embedded here because a README is part of the distributed package and package-level hashes belong in external registry/provenance artifacts. Recompute it with `tools/aisp_hash.py` at publication time.
+`package_sha256` belongs in an external registry/provenance artifact. Manifest 1.1 binds the complete program plus contract and declared-resource evidence, not every archive file or the SKILL.md executor configuration. Legacy 1.0 hashes did not bind the program body. Recompute with `tools/aisp_hash.py` at publication time.
 
 These hashes show local integrity only. They do not prove trust, safety, or registry approval.
 

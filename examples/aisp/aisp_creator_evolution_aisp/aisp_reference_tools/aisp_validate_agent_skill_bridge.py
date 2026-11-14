@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Agent Skills SKILL.md sidecar bridges for native AISP skills.
+"""Validate required generated Agent Skills interfaces for native AISP skills.
 
 The bridge is an interoperability projection, not an execution authority. This
 tool checks that a SKILL.md can be discovered by Agent Skills platforms, that it
@@ -18,8 +18,10 @@ from typing import Any
 
 try:
     from .aisp_validate import validate_skill
+    from .aisp_skill_md import validate_skill_md
 except ImportError:  # pragma: no cover - script execution path
     from aisp_validate import validate_skill
+    from aisp_skill_md import validate_skill_md
 
 
 PROTOCOL = "AISP V1.0.0"
@@ -62,14 +64,14 @@ class BridgeReporter:
     def __init__(self) -> None:
         self.results: list[BridgeResult] = []
 
-    def fail(self, code: str, message: str, path: Path | str | None = None, fix: str | None = None) -> None:
-        self.results.append(BridgeResult(code, "EC7", "FAIL", False, message, _path(path), fix))
+    def fail(self, code: str, message: str, path: Path | str | None = None, fix: str | None = None, rule_id: str = "EC7") -> None:
+        self.results.append(BridgeResult(code, rule_id, "FAIL", False, message, _path(path), fix))
 
     def warn(self, code: str, message: str, path: Path | str | None = None, fix: str | None = None) -> None:
         self.results.append(BridgeResult(code, "EC7", "WARN", False, message, _path(path), fix))
 
-    def info(self, code: str, message: str, path: Path | str | None = None) -> None:
-        self.results.append(BridgeResult(code, "EC7", "INFO", True, message, _path(path)))
+    def info(self, code: str, message: str, path: Path | str | None = None, rule_id: str = "EC7") -> None:
+        self.results.append(BridgeResult(code, rule_id, "INFO", True, message, _path(path)))
 
     @property
     def has_failures(self) -> bool:
@@ -88,6 +90,13 @@ def _normalize_text(text: str) -> str:
 
 def _strip_quotes(value: str) -> str:
     value = value.strip()
+    if value.startswith('"'):
+        try:
+            parsed = json.loads(value)
+            if isinstance(parsed, str):
+                return parsed
+        except ValueError:
+            pass  # Shared exact-projection validation rejects malformed/noncanonical YAML.
     if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
         return value[1:-1]
     return value
@@ -152,11 +161,11 @@ def _safe_bridge_path(base: Path, rel: str) -> tuple[Path | None, str | None]:
     parts = [part for part in normalized.split("/") if part not in {"", "."}]
     if any(part == ".." for part in parts):
         return None, "metadata.aisp_program must not contain path traversal."
-    resolved = (base / normalized).resolve()
     try:
+        resolved = (base / normalized).resolve()
         resolved.relative_to(base.resolve())
-    except ValueError:
-        return None, "metadata.aisp_program must stay inside the sidecar folder."
+    except (OSError, ValueError, RuntimeError):
+        return None, "metadata.aisp_program must be a valid path inside the sidecar folder."
     return resolved, None
 
 
@@ -181,24 +190,45 @@ def _load_native_skill_id(program: Path) -> str | None:
 
 
 def iter_bridge_files(target: Path) -> list[Path]:
+    if target.name == "SKILL.md":
+        return [target.absolute()]
     if target.is_file():
-        return [target.resolve()] if target.name == "SKILL.md" else []
+        return []
     if not target.is_dir():
         return []
     direct = target / "SKILL.md"
-    if direct.is_file():
-        return [direct.resolve()]
-    return sorted(path.resolve() for path in target.rglob("SKILL.md") if ".git" not in path.parts)
+    if direct.is_file() or (target / "aisp.aisop.json").is_file():
+        return [direct.absolute()]
+    interfaces = {path.absolute() for path in target.rglob("SKILL.md") if ".git" not in path.parts}
+    interfaces.update((path.parent / "SKILL.md").absolute() for path in target.rglob("aisp.aisop.json") if ".git" not in path.parts)
+    for path in interfaces:
+        if not path.parent.resolve().is_relative_to(target.resolve()):
+            raise ValueError("Discovered interface folder resolves outside the selected directory")
+    return sorted(interfaces)
 
 
 def validate_bridge(bridge: Path, strict_readme: bool = False) -> dict[str, Any]:
-    bridge = bridge.resolve()
-    bridge_dir = bridge.parent
+    bridge = bridge.absolute()
     reporter = BridgeReporter()
+    try:
+        # Resolve the containing folder, not the interface: M7 must see its link identity.
+        bridge_dir = bridge.parent.resolve()
+        bridge = bridge_dir / bridge.name
+        if bridge.is_symlink():
+            raise ValueError("SKILL.md must be a same-folder regular file, not a symbolic link")
+    except (OSError, ValueError, RuntimeError) as exc:
+        reporter.fail("AISP_E_M7_SKILL_MD_INPUT", f"Cannot inspect SKILL.md: {exc}", bridge, rule_id="M7")
+        return _report(bridge, reporter)
 
     if not bridge.is_file():
-        reporter.fail("AISP_E_EC7_BRIDGE_MISSING", "SKILL.md bridge is missing.", bridge)
+        reporter.fail("AISP_E_M7_SKILL_MD_MISSING", "Required SKILL.md interface is missing.", bridge, rule_id="M7")
         return _report(bridge, reporter)
+
+    issues = validate_skill_md(bridge_dir)
+    for issue in issues:
+        reporter.fail(issue["code"], issue["message"], bridge, rule_id="M7")
+    if not issues:
+        reporter.info("AISP_I_M7_SKILL_MD", "Bootstrap unchanged and format valid; executor not certified. No execution, safety or external trust is proved.", bridge, rule_id="M7")
 
     try:
         text = bridge.read_text(encoding="utf-8-sig")
@@ -224,7 +254,7 @@ def validate_bridge(bridge: Path, strict_readme: bool = False) -> dict[str, Any]
     if not isinstance(name, str) or not name.strip():
         reporter.fail("AISP_E_EC7_NAME", "SKILL.md frontmatter must include a non-empty name.", bridge)
     else:
-        if not NAME_RE.fullmatch(name):
+        if len(name) > 64 or not NAME_RE.fullmatch(name):
             reporter.fail("AISP_E_EC7_NAME", "SKILL.md name must use lowercase letters, digits, and hyphens.", bridge)
         if any(forbidden in name.lower() for forbidden in ("anthropic", "claude")):
             reporter.fail("AISP_E_EC7_NAME", "SKILL.md name must not contain anthropic or claude.", bridge)
@@ -249,9 +279,9 @@ def validate_bridge(bridge: Path, strict_readme: bool = False) -> dict[str, Any]
         reporter.fail("AISP_E_EC7_PROGRAM_PATH", "metadata.aisp_program must be a relative path string.", bridge)
         program_rel = ""
     if metadata.get("protocol") != PROTOCOL:
-        reporter.warn("AISP_W_EC7_PROTOCOL", f"metadata.protocol should be {PROTOCOL}.", bridge)
-    if metadata.get("bridge_mode") != "native_sidecar":
-        reporter.warn("AISP_W_EC7_BRIDGE_MODE", "metadata.bridge_mode should be native_sidecar.", bridge)
+        reporter.fail("AISP_E_EC7_PROTOCOL", f"metadata.protocol must be {PROTOCOL} (M7 compatibility mapping).", bridge)
+    if metadata.get("bridge_mode") != "agent_skills_bridge":
+        reporter.fail("AISP_E_EC7_BRIDGE_MODE", "metadata.bridge_mode must be agent_skills_bridge (M7 compatibility mapping).", bridge)
 
     if isinstance(program_rel, str) and program_rel.replace("\\", "/").strip() != "aisp.aisop.json":
         reporter.fail(
@@ -303,10 +333,6 @@ def validate_bridge(bridge: Path, strict_readme: bool = False) -> dict[str, Any]
 
     if not (("thin" in body_lower and "bridge" in body_lower) or "not the source of truth" in body_lower):
         reporter.fail("AISP_E_EC7_BODY", "SKILL.md body must state that it is a thin bridge and not the source of truth.", bridge)
-    if "aisp/aisop runtime" not in body_lower and "aisop runtime" not in body_lower:
-        reporter.warn("AISP_W_EC7_RUNTIME_BOUNDARY", "SKILL.md should state that hard execution requires an AISP/AISOP runtime.", bridge)
-    if "```json" in body_lower and '"functions"' in body_lower:
-        reporter.warn("AISP_W_EC7_LOGIC_COPY", "SKILL.md appears to copy AISP function logic; keep the bridge thin.", bridge)
 
     native_report = validate_skill(program.parent, aisp_dir=program.parent.parent, strict_readme=strict_readme)
     if not native_report.get("conformant", False):
@@ -342,26 +368,28 @@ def _report(bridge: Path, reporter: BridgeReporter) -> dict[str, Any]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Validate Agent Skills SKILL.md sidecars for native AISP skills.")
-    parser.add_argument("targets", nargs="+", help="SKILL.md files, native *_aisp folders, or directories containing AISP sidecar bridges.")
+    parser = argparse.ArgumentParser(description="Validate Agent Skills SKILL.md compatibility interfaces for native AISP skills (required M7).")
+    parser.add_argument("targets", nargs="+", help="SKILL.md files, native *_aisp folders, or directories containing AISP skills (including missing interfaces).")
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON output.")
     parser.add_argument("--strict-readme", action="store_true", help="Require generated per-skill README conformance for native AISP programs.")
     args = parser.parse_args(argv)
 
     bridge_files: list[Path] = []
+    reports = []
     for raw in args.targets:
-        bridge_files.extend(iter_bridge_files(Path(raw)))
+        target = Path(raw)
+        try:
+            found = iter_bridge_files(target)
+            if not found:
+                raise ValueError("Target contains no AISP compatibility interfaces")
+            bridge_files.extend(found)
+        except (OSError, ValueError, RuntimeError) as exc:
+            reporter = BridgeReporter()
+            reporter.fail("AISP_E_EC7_BRIDGE_INPUT", f"Cannot inspect target: {exc}", target)
+            reports.append(_report(target, reporter))
     bridge_files = sorted(dict.fromkeys(bridge_files))
 
-    if not bridge_files:
-        payload = {"reports": [], "summary": {"fail": 1, "warn": 0, "info": 0}, "conformant": False}
-        if args.json:
-            print(json.dumps(payload, indent=2))
-        else:
-            print("FAIL no SKILL.md bridges found", file=sys.stderr)
-        return 1
-
-    reports = [validate_bridge(bridge, strict_readme=args.strict_readme) for bridge in bridge_files]
+    reports.extend(validate_bridge(bridge, strict_readme=args.strict_readme) for bridge in bridge_files)
     summary = {
         "fail": sum(report["summary"]["fail"] for report in reports),
         "warn": sum(report["summary"]["warn"] for report in reports),

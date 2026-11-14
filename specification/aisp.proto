@@ -40,7 +40,7 @@ service AISPSkillService {
   rpc GetSkill(GetSkillRequest) returns (Skill) {}
 
   // Checks an AISP skill against the AISP_Standard conformance rules
-  // (M1-M6 skill conformance, R1-R7 runtime conformance where applicable).
+  // (M1-M7 skill conformance, R1-R7 runtime conformance where applicable).
   // Returns a structured conformance report.
   rpc CheckConformance(CheckConformanceRequest) returns (ConformanceReport) {}
 
@@ -62,7 +62,7 @@ message LayeredChain {
   // Optional governance authority domain, if the author opts into one. AISP
   // itself is registry- and governance-agnostic; may be empty.
   string governance_domain = 3;
-  // The executor domain (e.g., "soulbot.dev").
+  // The executor domain (e.g., "soulrun.dev", the replaceable default).
   string executor_domain = 4;
   // MUST be "Human_Sovereignty_and_Wellbeing". Immutable.
   string axiom_0 = 5;
@@ -109,7 +109,7 @@ message Skill {
 
 // The skill contract — a real object in the user message.
 message SkillContract {
-  // MUST start with "aisp.skill." (e.g. "aisp.skill.v1").
+  // MUST match the versioned aisp.skill.v<major> form (currently aisp.skill.v1).
   string profile = 1;
   // Triggering metadata.
   Invocation invocation = 2;

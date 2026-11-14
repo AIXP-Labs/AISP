@@ -8,7 +8,7 @@ the discovery glob `aisp/*_aisp/aisp.aisop.json` naturally skips it (EC3).
 | Term | Plain definition |
 |------|------------------|
 | Moving average | The mean closing price over the sampled window; smooths short-term noise. |
-| Volatility | The standard deviation of closing prices over the window; higher means larger swings. |
+| Volatility | The population standard deviation of sampled closing prices over the window; not annualized return volatility. |
 | Trend | The direction from the first to the last close in the window: up / down / flat. |
 | Signal | A notable pattern in the indicators worth highlighting; descriptive, never a trade instruction. |
 

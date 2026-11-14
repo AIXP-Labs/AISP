@@ -3,11 +3,12 @@
 This directory is a read-only offline reference snapshot of the AISP protocol
 schemas from `https://github.com/AIXP-Labs/AISP/tree/main/schemas`.
 
-- source commit: `self-contained-init-force-release`
-- snapshot date: `2026-06-22`
-- snapshot state: `init_force_single_commit`
-- snapshot note: bundled in the same single init-force release commit; use the
-  published release commit plus this manifest as local integrity evidence only.
+- source commit: `uncommitted-working-tree`
+- snapshot date: `2026-11-13`
+- snapshot state: `working_tree_revision`
+- snapshot note: local internal protocol candidate copied from the working tree;
+  no Git or network verification. Manifest hashes prove local integrity only,
+  not an unchanged upstream commit or external trust.
 - manifest: `MANIFEST.sha256.json`
 
 ## Files

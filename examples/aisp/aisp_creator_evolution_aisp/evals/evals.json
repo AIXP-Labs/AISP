@@ -42,9 +42,9 @@
       "expect": "design_evolution edits only that gap; no removed safety constraint, no lowered risk_level"
     },
     {
-      "name": "agent skills interop stays native-sidecar",
+      "name": "agent skills interface is mandatory M7",
       "given": "a request to add Agent Skills support to an AISP skill",
-      "expect": "generate_candidate creates a same-folder SKILL.md sidecar inside the native <id>_aisp/ folder by default unless the user explicitly opts out; the sidecar has metadata.aisp_program == aisp.aisop.json and bridge_mode == native_sidecar; it does not create examples/agent_skills_examples or a nested bridge package"
+      "expect": "generate_candidate creates mandatory same-folder SKILL.md using aisp_skill_md.py, with aisp_program == aisp.aisop.json and bridge_mode == agent_skills_bridge, derived name/description/license and the fixed executor bootstrap; no opt-out, copied business logic, external bridge or nested package is allowed"
     },
     {
       "name": "default output path is creator sibling",
@@ -54,7 +54,7 @@
     {
       "name": "agent skills bridge warnings are not silently accepted",
       "given": "a candidate SKILL.md sidecar where aisp_validate_agent_skill_bridge.py exits 0 but reports EC7 WARN for bridge_mode, protocol, runtime-boundary, or logic-copy",
-      "expect": "validate_candidate treats the warning as release-blocking unless a stricter candidate policy explicitly rejects/replaces the weak bridge; metadata.bridge_mode != native_sidecar is always rejected"
+      "expect": "validate_candidate rejects legacy EC7 warnings as a stale-tool guard; M7 also rejects missing/legacy/malformed/drifted interfaces, including bridge_mode != agent_skills_bridge. Fixed bootstrap functions are permitted, copied business logic is not; format consistency does not certify executor behavior"
     },
     {
       "name": "old external bridge ancestors are rejected",

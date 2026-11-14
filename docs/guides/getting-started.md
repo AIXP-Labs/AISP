@@ -50,12 +50,16 @@ A native AISP skill is one self-contained folder:
 aisp/
 └── yijing_aisp/                # folder name == id, MUST end with _aisp
     ├── aisp.aisop.json         # the skill body (an AISOP V1.0.0 program)
+    ├── SKILL.md                # MUST: generated Agent Skills compatibility interface
+    ├── README.md               # SHOULD: generated introduction; strict/release requires it
     └── data/
         ├── hexagrams.json
         └── interpretation_guide.md
 ```
 
-The skill body is a 2-message array. The `system` message holds identity metadata; the `user` message holds the strong `instruction`, the real-object `aisp_contract`, the `aisop.main` graph, and the per-node `functions`. Core conformance does **not** require `SKILL.md`, but generated or distributed skills SHOULD include a thin same-folder sidecar by default unless explicitly opted out.
+The business body is a two-message array: system identity and user instruction/contract/graph/functions. Every conformant package also MUST include the generated same-folder `SKILL.md` interface (M7), with no opt-out. Hosts hand execution to an available conforming AISP/AISOP executor, SoulRun by default; without one, stop rather than execute or continue the program themselves. Static interface checks do not certify an executor or prove completion.
+
+The interface has one version condition. A matching installed executor runs directly; proven absence/mismatch prompts for installation, then a matching recheck. Refusal, failed installation or an unusable probe stops. See [the interface guide](../topics/interoperability-with-agent-skills.md) for explicit `>=`/`==` constraints and frozen defaults.
 
 ---
 
@@ -81,7 +85,7 @@ The fastest way to learn is to read a working skill, then build one:
 
 ## Summary
 
-An AISP skill is a self-contained folder whose body is a real AISOP program, whose contract is a real object in the user message, and whose red lines are bound to real mechanisms. The skill is the program; hard guarantees come only from `enforced_by → sys.*`; trust is never self-declared.
+An AISP skill is a self-contained folder with an AISOP business program, a real-object contract in the user message, and a required generated interface. Its red lines name mechanisms that a conforming runtime must actually enforce; static bindings alone do not prove that enforcement occurred. Trust is never self-declared.
 
 ---
 

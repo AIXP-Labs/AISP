@@ -1,23 +1,23 @@
 {
   "manifest_version": "1.0",
   "directory": "aisp_protocol_schemas",
-  "snapshot_date": "2026-06-22",
+  "snapshot_date": "2026-11-13",
   "source_url": "https://github.com/AIXP-Labs/AISP/tree/main/schemas",
-  "source_commit": "self-contained-init-force-release",
-  "snapshot_state": "init_force_single_commit",
-  "snapshot_note": "Bundled in the same single init-force release commit; a literal self-referential commit hash cannot be embedded without changing the commit hash. Use the published release commit plus these sha256 values as local integrity evidence only.",
+  "source_commit": "uncommitted-working-tree",
+  "snapshot_state": "working_tree_revision",
+  "snapshot_note": "Local internal protocol candidate copied from the working tree; no Git or network verification. Per-file hashes are local integrity only, not upstream commit or trust proof.",
   "scope": "complete contents copied from the AISP protocol schemas directory; README.md and this manifest are local snapshot metadata",
   "trust_boundary": "sha256 values provide local integrity evidence only; they do not prove upstream trust, safety, or provenance",
   "files": [
     {
       "path": "aisp-contract-v1.schema.json",
-      "bytes": 5066,
-      "sha256": "983e96565accfa234c13f68aa9fd9b93703487f0474c2629e56524c9690e220f"
+      "bytes": 5112,
+      "sha256": "e3a627960dad7f2c94ddb33ee72ceee0d650ab48b6a3f94d6440fb21356b6845"
     },
     {
       "path": "registry-manifest-v1.schema.json",
-      "bytes": 2142,
-      "sha256": "e66433f07481a1e86391a71eddea71281138cd9d989963041fd020fd98e79702"
+      "bytes": 2699,
+      "sha256": "1fd5409561adcaa7891276dc15fd11b17dfa81f124effa4c13b080dd669a9a86"
     },
     {
       "path": "runtime-trace-v1.schema.json",

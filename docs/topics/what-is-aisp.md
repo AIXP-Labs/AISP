@@ -10,7 +10,7 @@ Today's dominant skill format — Agent Skills (`SKILL.md`) — is Markdown pros
 
 ### 1. Prose Skills Give No Executable or Governable Guarantee
 
-A `SKILL.md` describes *what to do* in natural language. There is no execution graph, no required-node topology, and no machine-checkable structure. The skill "works" only insofar as the model follows the prose. There is no compile-time object the way a real program has — nothing a tool can validate before the skill runs.
+A prose `SKILL.md` describes *what to do*. Its frontmatter and package layout can be validated, and hosts may provide their own controls; that does not by itself supply AISP's executable graph, required-node topology or contract bindings. AISP adds those structures while retaining the Agent Skills interface.
 
 ### 2. Trust by Prose
 
@@ -24,17 +24,18 @@ Because a skill bundles resources (scripts, templates, data, sometimes remote UR
 
 ## What is AISP?
 
-AISP keeps the **spirit** of Agent Skills (a reusable capability, triggering, progressive disclosure, resources) and discards the **form** (the `SKILL.md` body). A native AISP skill is a self-contained folder whose body is a real **AISOP V1.0.0 program**:
+AISP is an executable, governable skill package built on AISOP and bridged to agent platforms through the Agent Skills standard. Its business body is a real AISOP program; the generated same-folder SKILL.md is a required compatibility interface, not business truth:
 
 ```text
 A native AISP skill =
     one folder  (folder = skill; folder name = id; MUST end with _aisp)
   + aisp.aisop.json  (an AISOP program: contract + execution graph + nodes + sys.*)
+  + SKILL.md  (required generated compatibility interface, M7)
   + custom resources (data/ scripts/ … declared in aisp_contract.resources)
-  + _shared/  (cross-skill shared resources)
+  + optional sibling aisp/_shared/ resources (declared with shared scope)
 ```
 
-The skill **is** the program. Its contract — `user.content.aisp_contract`, a real JSON object in the user message — carries lean metadata: when to trigger, the red lines bound to real enforcement, discovery tags, risk, and the resource inventory. Hard guarantees come **only** from `non_negotiable.enforced_by → sys.*`; trust is **never** self-declared.
+The skill's business source **is** the program. Its contract, `user.content.aisp_contract`, is a real JSON object in the user message carrying triggers, red-line bindings, discovery, risk and resource inventory. Hard guarantees require actual runtime enforcement of `sys.*`, graph topology or genuinely restricted tools. Static declarations alone are not enforcement; trust is **never** self-declared.
 
 AISP does not rebuild an engine. Execution builds on **AISOP** (AISP's only base). Its lifecycle (generation / evolution / distribution) is AISP-native and tool-agnostic. AISP defines only the *package*.
 
@@ -48,10 +49,10 @@ AISP does not rebuild an engine. Execution builds on **AISOP** (AISP's only base
 | Red lines | Sentences the model is asked to follow (soft) | `non_negotiable` bound to real mechanisms; machine-verifiable (M4) |
 | Trust | Can self-declare `verified` / `safe` | **Never self-declared** (M6); judged by registry / scanner / user |
 | Body | Markdown prose | A real AISOP V1.0.0 program (`aisp.aisop.json`) |
-| Standardization | Cross-vendor open standard | AISP's own; **can include a thin same-folder `SKILL.md` sidecar** |
+| Standardization | Cross-vendor open standard | AISP packaging plus a **required generated same-folder compatibility interface** |
 | Relationship | — | **Complementary**, not a replacement |
 
-Public framing: **"AISP does not replace Agent Skills; it provides executable, verifiable, governable skills alongside them, and can include a thin `SKILL.md` sidecar to interoperate with Agent Skills platforms."**
+Public framing: **"AISP is an executable, governable skill package built on AISOP and bridged to agent platforms through the Agent Skills standard."**
 
 ---
 
@@ -80,14 +81,14 @@ Defines the `.aisop.json` language: the execution graph (Mermaid / JSON flow), t
 
 Defines the package itself: the folder-per-skill structure and `_aisp` suffix, the `aisp_contract` schema, discovery (`aisp_list.py` / `aisp_list.json`), and the `enforced_by → sys.*` red-line binding.
 
-### soulbot.dev — Executor
+### soulrun.dev — Executor (Default, Replaceable)
 
-The reference runtime: discovers skills, reads `user.content.aisp_contract`, runs `RUN aisop.main`, enforces every `non_negotiable.enforced_by` mechanism, gates resources, and never bypasses `sys.io.confirm`.
+SoulRun is the default reference executor; any conforming AISP/AISOP executor is allowed. It discovers skills, reads the contract, runs the graph, enforces real mechanisms and blocking gates, and dispatches agent nodes independently. No executor means no execution: hosts must not execute or continue the business program themselves. Five configuration strings and command exit 0 do not prove compatibility or completion.
 
 ```text
 DEFINES   →  aisop.dev   (the execution language a skill is written in)
 PACKAGES  →  aisp.dev    (the skill package: folder, contract, discovery, red lines)
-EXECUTES  →  soulbot.dev (the reference runtime)
+EXECUTES  →  soulrun.dev (default reference executor; other conforming executors allowed)
 ```
 
 ---
@@ -102,11 +103,11 @@ EXECUTES  →  soulbot.dev (the reference runtime)
 ├─────────────────────────────────────────┤
 │  AISOP — Execution Layer                 │  .aisop.json + sys.* (the skill body)
 ├─────────────────────────────────────────┤
-│  SoulBot — Executor                      │  reference runtime
+│  Executor                               │  SoulRun by default; replaceable
 └─────────────────────────────────────────┘
 ```
 
-Complementary to AISP, **Agent Skills** sits alongside as an interop target: a native AISP skill does not require `SKILL.md` for core conformance, but authoring and public-distribution workflows SHOULD add a thin same-folder `SKILL.md` sidecar bridge by default unless explicitly opted out.
+Complementary to AISP, **Agent Skills** provides the required generated same-folder compatibility interface (M7), handing execution to a conforming executor without duplicating the business program. No interface opt-out is allowed.
 
 ---
 
@@ -116,12 +117,12 @@ Complementary to AISP, **Agent Skills** sits alongside as an interop target: a n
 |---------|-------------|
 | **Executable Skill IR** | The skill body is a real AISOP V1.0.0 program, not another `SKILL.md`. The skill is the program. |
 | **Contract in the user message** | `user.content.aisp_contract` is a real object the model reads directly this turn — no JSON-in-string, no rendering gamble. |
-| **Policy-as-code red lines** | `non_negotiable.enforced_by → sys.*` binds each rule to a real mechanism. Only `sys.*` is a hard guarantee. |
+| **Policy-as-code red lines** | `non_negotiable.enforced_by` binds rules to checkable mechanisms; actual hardness depends on runtime enforcement. |
 | **Folder-per-skill, `_aisp` suffix** | One self-contained folder (name == `id`, ends with `_aisp`); zippable / hashable as a registry unit. |
 | **Runtime-independent discovery** | `aisp_list.py` (zero-dependency) + `aisp_list.json` index + glob fallback. |
 | **Two tiers** | Heavy execution (Tier A) / lean contract (Tier S); no duplication. |
-| **Conformance** | M1–M6 (skill), R1–R7 (runtime), SE/ST (security), EC (ecosystem) — machine-verifiable. |
-| **Default `SKILL.md` export** | A thin bridge for Agent Skills platforms generated by default unless explicitly opted out; never copies logic; deletable without breaking native AISP execution. |
+| **Conformance** | M1–M7 (skill), R1–R7 (runtime), SE/ST (security), EC (ecosystem) — machine-verifiable. |
+| **Required `SKILL.md` interface** | M7 requires the generated same-folder executor bootstrap, with no opt-out. One version condition chooses direct execution or a consented, rechecked installation; business logic remains in the AISP program. |
 | **Axiom 0 enforcement** | Every skill inherits "Human Sovereignty and Wellbeing"; `sys.io.confirm` is forced-blocking. |
 
 ---

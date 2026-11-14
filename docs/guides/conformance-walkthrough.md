@@ -1,16 +1,16 @@
 # Conformance Walkthrough
 
-AISP skills are checked against a conformance framework: **M1–M6** for skills, **R1–R7** for runtimes, plus the **SE** (security) and **EC** (ecosystem) extensions. This guide walks through checking a skill, reading the results, and fixing common violations. Unlike runtime testing, conformance is a pre-execution gate — a skill is verified before it ever runs.
+AISP skills are checked against a conformance framework: **M1–M7** for skills, **R1–R7** for runtimes, plus the **SE** (security) and **EC** (ecosystem) extensions. This guide walks through checking a skill, reading the results, and fixing common violations. Static conformance is a pre-execution consistency gate, not proof that runtime enforcement or business behavior has been verified.
 
 ---
 
 ## Overview
 
-A conformant AISP skill is, above all, **a legal AISOP V1.0.0 program** (M1) — then it satisfies the additional skill-package rules M2–M6. The rules live in the conformance standards:
+A conformant AISP skill is, above all, **a legal AISOP V1.0.0 program** (M1), then satisfies M2–M7, including the required generated compatibility interface. The rules live in the conformance standards:
 
 | Series | Source | Scope |
 |--------|--------|-------|
-| M1–M6 | `AISP_Standard.core` | Skill conformance (FAIL on violation) |
+| M1–M7 | `AISP_Standard.core` | Skill conformance (FAIL on violation) |
 | R1–R7 | `AISP_Standard.core` | Runtime conformance |
 | SE1–SE8, ST1–ST6 | `AISP_Standard.security` | Security + threat taxonomy |
 | EC1–EC8 | `AISP_Standard.ecosystem` | `aisp/` directory + lifecycle reuse + generated skill README |
@@ -54,21 +54,22 @@ python -B tools/aisp_readme.py examples/aisp/yijing_aisp --write
 python -B tools/aisp_skill_md.py examples/aisp/yijing_aisp --write
 ```
 
-The validator covers M1-M6 and the static parts of SE/EC. Runtime-conformance evidence is checked from trace JSON using `aisp_check_runtime_trace.py`; live runtime harnesses can emit that trace shape. `enforced_by: tools` is conditional in static-only mode and can be resolved only by event-backed runtime trace evidence or provenance-bearing tool capability evidence; `--strict-tools` rejects bare hard attestations. Registry/provenance hashes are generated with `aisp_hash.py`. Per-skill README projections are generated and checked with `aisp_readme.py`; a passing README check proves consistency, not trust or safety. Default-but-core-optional Agent Skills sidecars are generated with `aisp_skill_md.py` and checked with `aisp_validate_agent_skill_bridge.py`; passing generation/bridge validation proves projection consistency, sidecar shape, and native AISP validation, not external trust. A missing sidecar is an EC7 warning in core validation, not a core failure unless a stricter release profile requires it.
+The validator covers M1-M7 and static SE/EC. Runtime traces are checked with `aisp_check_runtime_trace.py`; `--strict-tools` rejects bare hard attestations and requires the existing event/provenance evidence. `aisp_hash.py` computes publication hashes, not trust. README checks prove derivation consistency. The required generated SKILL.md is checked by the same read-only M7 function in core and bridge validation: existence, derived header and exact bootstrap with five valid launch strings plus the frozen version policy. Missing/legacy/drifted interfaces FAIL, no opt-out. Format success does not certify an executor, safety, trust or completion. Execution MUST use a conforming executor, SoulRun by default, never host self-execution.
 
 ### Step 1: Confirm it is a legal AISOP program (M1)
 
-Parse `aisp.aisop.json`. It MUST be a 2-message array; `data[0].content` MUST have `protocol == "AISP V1.0.0"`, plus `axiom_0` / `id` / `name` / `version` / `flow_format`; `data[1].content` MUST have `instruction` / `aisop.main` / `functions`. `license` SHOULD be present.
+Parse `aisp.aisop.json`. It MUST be a 2-message array; `data[0].content` MUST have `protocol == "AISP V1.0.0"`, `loading_mode == "node"`, plus `axiom_0` / `id` / `name` / `version` / `flow_format`; `data[1].content` MUST have `instruction` / `aisop.main` / `functions`. Each function needs a string-valued numeric `stepN`; explicit `execute_mode` is `inline` or `agent`, with omitted values falling back to inline and warning. `license` SHOULD be present.
 
-### Step 2: Check the package rules (M2–M6)
+### Step 2: Check the package rules (M2–M7)
 
 | Rule | Check |
 |------|-------|
 | **M2** | Folder name == `id`, ends with `_aisp`; file named `aisp.aisop.json` |
-| **M3** | `user.content.aisp_contract` is a real object; `profile` starts `aisp.skill.`; has `invocation` + `non_negotiable` |
+| **M3** | `user.content.aisp_contract` is a real object; `profile` has versioned form `aisp.skill.v<major>`; has `invocation` + `non_negotiable` |
 | **M4** | Every `non_negotiable.enforced_by` points to a mechanism that exists |
 | **M5** | Each `resources[].path` is relative, no `../`; `mode` in the enum; scripts have `requires_tools` |
 | **M6** | No self-declared trust (`trusted` / `verified` / `safe`) |
+| **M7** | Required same-folder SKILL.md, derived header and fixed executor bootstrap; only five valid launch strings plus the frozen version policy may vary |
 
 ### Step 3: Verify the red-line bindings (M4 in detail)
 
@@ -80,7 +81,7 @@ For each `enforced_by`:
 
 ### Step 4: Apply security + ecosystem extensions
 
-Run SE1-SE8 (path confinement, remote gate, mode gating, least authority, discovery-script safety, no self-trust, confirm invariant, read-only during execution) and EC1-EC8 (`aisp/` directory contract, index ↔ folder consistency, `_shared/` scope, provenance, generation, evolution safety, sidecar bridge, generated per-skill README).
+Check the static SE/EC coverage and separately assess runtime-only requirements: SE1-SE8 cover path confinement, remote gate, mode gating, least authority, discovery-script safety, no self-trust, confirm invariant and read-only execution; EC1-EC8 cover the directory/index, shared scope, provenance, generation, evolution, the EC7-to-M7 required-interface mapping and generated README. The static validator does not execute every security rule.
 
 ---
 
@@ -94,8 +95,11 @@ Run SE1-SE8 (path confinement, remote gate, mode gating, least authority, discov
 | M4 | PASS | `aisop.main` orders cast→interpret; `interpret.step1:sys.assert` exists; `interpret.step4:sys.assert` exists |
 | M5 | PASS | `data/hexagrams.json`, `data/interpretation_guide.md` — relative, declared, `read_only` |
 | M6 | PASS | no self-declared trust |
+| M7 | PASS | generated interface matches the skill, executor configuration and fixed bootstrap |
 
-A clean skill produces all-PASS for M1–M6.
+A clean skill produces all-PASS for M1–M7.
+
+M4 only checks the binding's existence and mechanism prefix. It does not evaluate the assertion or prove that its condition captures the rule. The current disclaimer example compares exact declared wording, rather than mere presence. This still needs actual runtime evaluation; unsupported expressions or runtime-accepted unverified results must remain visible, even if execution completes.
 
 ---
 
@@ -107,7 +111,7 @@ A clean skill produces all-PASS for M1–M6.
 
 **Impact.** A claimed hard guarantee that does not exist — the worst kind of failure, because it looks safe.
 
-**Fix.** Either wire a real `sys.assert` step, or downgrade the rule to plain guidance in `functions.<node>.constraints` (and remove it from `non_negotiable`).
+**Fix.** Repair the binding and implement the intended check in a real, runtime-supported step, then verify its positive and failure behavior. Do not remove or weaken the red line merely to pass validation. A deliberate contract change requires separate human review and authorization.
 
 ### M5 Violation: Path escape
 
@@ -143,7 +147,7 @@ Check conformance in priority order:
 2. **Bindings second** — does every red line point to a real mechanism (M4)?
 3. **Safety third** — paths confined, no self-trust, confirm not bypassed (M5 / M6 / SE7).
 
-Only `enforced_by → sys.*` is a hard guarantee; everything else the model reads is policy-as-prompt.
+Hard guarantees require actual runtime enforcement of the bound mechanism: `sys.*`, graph topology, or genuinely restricted tools. A static binding or a self-reported trace does not prove that enforcement occurred. For the interface, apply one version decision: matching versions run directly; proven absence/mismatch prompts for installation, followed by a matching recheck. Probe errors stop.
 
 ---
 
